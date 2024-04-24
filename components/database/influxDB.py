@@ -20,6 +20,7 @@ import os
 import sys
 import threading
 import copy
+import json
 
 class InfluxDB():
 	def __init__(self, host):
@@ -31,14 +32,17 @@ class InfluxDB():
 		self.database = demCfg['db']['influx']['dbname']
 		self.prefix = ""
 
-		self.username = ""
-		self.password = ""
+		self.username = demCfg['db']['influx']['username']
+		self.password = demCfg['db']['influx']['password']
+		self.token = demCfg['db']['influx']['token']
+		self.org = demCfg['db']['influx']['org']
+		self.org_id = self._influxdb_get_org_id_by_name()
 
 		self.data = []
 		self.maxBuffer = 100000
 
 		self.storeBackup = False 	# Store data by default in a backup file
-		self.restoreBackup = True	# Restore backup when connection to DB is restored
+		self.restoreBackup = True   # Restore backup when connection to DB is restored
 		self.autoCleanup = True 	# Cleanup text files when data is restored after a hiccup
 		self.errorFlag = False
 		
@@ -127,53 +131,149 @@ class InfluxDB():
 
 
 	def writeToDatabase(self, data):
+
 		result = True
+		self.host.logMsg(f"[InfluxDB] Writing to database {self.database}")
+
 		toSend = ("\n".join(data) + "\n")
+
 		try:
-			r = requests.post(self.address+ ':'+self.port+ '/write?db='+self.database,  auth=(self.username, self.password), data=toSend, timeout=5.0)
+
+			#OLD code for influxdb 1x
+			# r = requests.post(self.address+ ':'+self.port+ '/write?db='+self.database,  auth=(self.username, self.password), data=toSend, timeout=5.0)
+
+			# InfluxDB 2x API
+			url = f"http://{self.address}:{self.port}/api/v2/write?org={self.org}&bucket={self.database}"
+			headers = {
+				'Authorization': f'Token {self.token}',
+				'Content-type': 'text/plain; charset=utf-8'
+			}
+			r = requests.post(url, headers=headers, data=toSend, timeout=5.0)
+
+
 			if r.status_code != 204:
-				self.host.logWarning("[InfluxDB] Could not write to database. Errorcode: "+str(r.status_code)+ "\t\t" + r.text)
+				self.host.logWarning("[InfluxDB] Could not write to database. Errorcode: "+str(r.status_code) + "\t\t" + r.text)
 				result = False
 
-		except:
-			self.host.logWarning("[InfluxDB] Could not connect to database, is it running?\n")
+		except Exception as e:
+			self.host.logWarning(f"[InfluxDB] Could not connect to database, is it running? - {url} - {str(e)}\n")
 			result = False
 		
 
 		return result
 
 	def clearDatabase(self):
+
 		self.host.logMsg("[InfluxDB] Clearing database "+self.database)
-		payload = {'q':"DROP DATABASE "+self.database}
+
 		try:
-			r = requests.post(self.address+ ':'+self.port+ '/query',  auth=(self.username, self.password), data=payload)
-			if r.status_code != 200:
-				self.host.logWarning("[InfluxDB] Could not drop the database. Check your InfluxDB. Errorcode: "+str(r.status_code)+ "\t\t" + r.text)
+
+			# OLD code for influxdb 1x
+			# payload = {'q':"DROP DATABASE "+self.database}
+			# r = requests.post(self.address+ ':'+self.port+ '/query',  auth=(self.username, self.password), data=payload)
+
+			# InfluxDB 2x API
+			bucket_id = self._influxdb_get_bucket_id()
+			if bucket_id is not None:
+
+				url = f"http://{self.address}:{self.port}/api/v2/buckets/{bucket_id}"
+				headers = {
+					'Authorization': f'Token {self.token}',
+				}
+				# Send the DELETE request
+				response = requests.delete(url, headers=headers)
+				if response.status_code == 204:
+					self.host.logWarning("[InfluxDB] Bucket deleted successfully")
+				else:
+					self.host.logWarning(
+						f"[InfluxDB] Failed to delete bucket: {response.status_code} - {response.text}")
+
+			else:
+				self.host.logWarning("[InfluxDB] Could not delete bucket, does it exists?")
+				return
+
 		except:
-			self.host.logWarning("[InfluxDB] Could not connect to database, is it running?")
-		
+			self.host.logWarning(f"[InfluxDB] Could not connect to database, is it running? - {url}")
 
 		self.host.logMsg("[InfluxDB] Removing backup files")
 		self.cleanupTextFiles()
 	
 		self.host.logMsg("[InfluxDB] Creating database " + self.database)
 		self.createDatabase()
-		
-
 
 	def createDatabase(self):
-		payload = {'q': "CREATE DATABASE " + self.database}
+
 		try:
-			r = requests.post(self.address + ':' + self.port + '/query',  auth=(self.username, self.password), data=payload)
-			if r.status_code != 200:
-				self.host.logWarning("[InfluxDB] Could not create the database. make sure that it does not start with numbers and does not contain dashes. \nErrorcode: "+str(r.status_code)+ "\t\t" + r.text)
+
+			# OLD code for influxdb 1x
+			# payload = {'q': "CREATE DATABASE " + self.database}
+			# r = requests.post(self.address + ':' + self.port + '/query',  auth=(self.username, self.password), data=payload)
+
+			# InfluxDB 2x API
+			url = f"http://{self.address}:{self.port}/api/v2/buckets"
+			headers = {
+				'Authorization': f'Token {self.token}',
+				'Content-Type': 'application/json'
+			}
+
+			# Bucket details
+			data = {
+				"name": self.database,
+				"orgID": self.org_id,  # Replace with your actual organization ID
+			}
+
+			r = requests.post(url, headers=headers, data=json.dumps(data))
+
+			if r.status_code == 422:
+				self.host.logWarning(f"[InfluxDB] Database is already created.")
+			elif r.status_code != 201:
+				self.host.logWarning(f"[InfluxDB] Could not create the database {self.database}. make sure that it does not start with numbers and does not contain dashes. \nErrorcode: "+str(r.status_code)+ "\t\t" + r.text)
+
 		except:
-			self.host.logWarning("[InfluxDB] Could not connect to database, is it running?")
-		
+			self.host.logWarning(f"[InfluxDB] Could not connect to database, is it running? - {url}")
 
+	def _influxdb_get_org_id_by_name(self):
 
+		url = f"http://{self.address}:{self.port}/api/v2/orgs"
+		headers = {
+			'Authorization': f'Token {self.token}',
+			'Content-Type': 'application/json'
+		}
 
+		# Send the request to get all organizations
+		response = requests.get(url, headers=headers)
+		if response.status_code == 200:
+			organizations = response.json()
+			# Search for the organization by name
+			for org in organizations['orgs']:
+				if org['name'] == self.org:
+					return org['id']
+			self.host.logWarning("[InfluxDB] Organization not found")
+			return None
+		else:
+			self.host.logWarning(f"[InfluxDB] Failed to retrieve organizations: {response.status_code} - {response.text}")
+			return None
 
+	def _influxdb_get_bucket_id(self):
+
+		url = f"http://{self.address}:{self.port}/api/v2/buckets?name={self.database}"
+		headers = {
+			'Authorization': f'Token {self.token}',
+			'Content-Type': 'application/json'
+		}
+
+		# Send the request to get the bucket ID
+		response = requests.get(url, headers=headers)
+		if response.status_code == 200:
+			buckets = response.json()
+			if buckets['buckets']:
+				return buckets['buckets'][0]['id']  # Return the first matched bucket ID
+			else:
+				self.host.logWarning("[InfluxDB] No bucket found with that name.")
+				return None
+		else:
+			self.host.logWarning(f"[InfluxDB] Failed to retrieve bucket ID: {response.status_code} - {response.text}")
+			return None
 
 	def writeTextFile(self):
 		# Writing into files based on the date, YYYYMMDD:
