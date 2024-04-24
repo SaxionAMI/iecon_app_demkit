@@ -1,0 +1,46 @@
+
+# User models location
+env:
+  path: /app/components/
+
+workspace:
+  path: /app/workspace/
+
+# Database settings
+db:
+  influx:
+    address: http://localhost
+    port: "8086"
+    dbname: demkit
+    username:
+    password:
+    token:
+    org: iecon
+
+# Variable output for logs ans backups (stored within the workspace folder of a model by default)
+# Do not forget the traling slash!
+var:
+  backup: var/backup/
+  databasebackup: var/backup/database/
+  log: var/log/
+
+# Timezone information
+timezonestr: Europe/Amsterdam
+
+
+# OPTIONAL SETTINGS
+# These settings are only required for certain cases and normally can remain unchanged
+
+# Socket path for networked configurations
+network:
+  sockPath: ipc:///home/user/python/
+
+#Smart house config
+smarthouse:
+  usb: /dev/ttyACM0
+
+# STATIC SETTINGS
+# You should not modify lines below
+
+# Version control, this config is valid for V4 of DEMKit
+ver: 4.1
