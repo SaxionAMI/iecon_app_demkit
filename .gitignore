@@ -110,7 +110,7 @@ ENV/
 .ropeproject
 
 # General DEMKit files
-usrconf.py
+# usrconf.py
 *.dem
 
 # General DEMKit folders
