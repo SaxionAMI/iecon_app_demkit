@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  iecon_app_demkit:
+    build: $FOLDER_IECON_APP_DEMKIT
+    container_name: iecon_app_demkit
+    network_mode: "host"
+    # restart: always
+    volumes:
+      - $FOLDER_IECON_APP_DEMKIT:/app
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m

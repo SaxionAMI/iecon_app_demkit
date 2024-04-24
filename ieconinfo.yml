@@ -1,0 +1,17 @@
+#Application name
+name: "iecon_app_demkit"
+
+# Application version
+version: "01.240423.02"
+
+# Application description
+description: "IECON Application DEMKIT - EMS integration for IECON"
+
+# Application Author
+author: "Javier FG - Saxion"
+
+# Application type ( docker, service )
+type: "docker"
+
+# Application scope ( backend, device, application )
+scope: "application"
