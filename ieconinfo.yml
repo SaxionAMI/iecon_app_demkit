@@ -2,13 +2,13 @@
 name: "iecon_app_demkit"
 
 # Application version
-version: "01.240423.02"
+version: "01.240513.01"
 
 # Application description
 description: "IECON Application DEMKIT - EMS integration for IECON"
 
 # Application Author
-author: "Javier FG - Saxion"
+author: "Javier FG - Saxion, Gerwin Hoogsteen - UTwente"
 
 # Application type ( docker, service )
 type: "docker"
