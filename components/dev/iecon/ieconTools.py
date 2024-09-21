@@ -37,6 +37,12 @@ def iecon_parse_spb_data_2_demkit(spb_data:dict) -> dict:
 
         elif name == "POW_FACT":
             out["PF-powerfactor.PF"] = value
+        elif name == "POW_FACT_L1":
+            out["PF-powerfactor.L1"] = value
+        elif name == "POW_FACT_L2":
+            out["PF-powerfactor.L2"] = value
+        elif name == "POW_FACT_L3":
+            out["PF-powerfactor.L3"] = value
 
         elif name == "CURR":
             out["A-current.A"] = value
@@ -83,6 +89,30 @@ def iecon_parse_spb_data_2_demkit(spb_data:dict) -> dict:
         elif name == "ENE_CNT_IMP_L3":
             pass
         elif name == "ENE_CNT_REAC_EXP":
+            pass
+
+        elif name == "POW_APP_L1":
+            pass
+        elif name == "POW_APP_L2":
+            pass
+        elif name == "POW_APP_L3":
+            pass
+
+        elif name == "POW_REAC_L1":
+            pass
+        elif name == "POW_REAC_L2":
+            pass
+        elif name == "POW_REAC_L3":
+            pass
+
+        elif name == "CURR_Neutral":
+            pass
+
+        elif name == "ENE_CNT_REAC_EXP_L1":
+            pass
+        elif name == "ENE_CNT_REAC_EXP_L2":
+            pass
+        elif name == "ENE_CNT_REAC_EXP_L3":
             pass
 
         else:

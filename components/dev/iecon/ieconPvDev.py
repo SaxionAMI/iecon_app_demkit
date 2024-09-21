@@ -68,7 +68,8 @@ class IeconPvDev(CurtDev):
                 # If all succeeded:
                 self.lastUpdate = self.host.time()
             else:
-                self.logWarning("%s - IECON EoND is offline, data ignored " % self.device.entity_name)
+                # self.logWarning("%s - IECON EoND is offline, data ignored " % self.device.entity_name)
+                pass
 
         self.lockState.release()
         return

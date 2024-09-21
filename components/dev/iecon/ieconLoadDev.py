@@ -69,7 +69,8 @@ class IeconLoadDev(LoadDev):
                 # If all succeeded:
                 self.lastUpdate = self.host.time()
             else:
-                self.logWarning("%s - IECON EoND is offline, data ignored" % self.device.entity_domain)
+                # self.logWarning("%s - IECON EoND is offline, data ignored" % self.device.entity_domain)
+                pass
 
         self.lockState.release()
 

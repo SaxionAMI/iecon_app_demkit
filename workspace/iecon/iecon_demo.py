@@ -166,6 +166,7 @@ sim.logMsg("IECON SCADA object initialized, detected %d edge entities in the dom
 
 # scada.publish_birth()  # (Commented so the scada is not published in spb - ghost app) Send birth message for the SCADA application
 
+
 #
 # # ADDING A HEMS - add a controller if necessary
 # cp = None
@@ -194,56 +195,88 @@ sim.logMsg("IECON SCADA object initialized, detected %d edge entities in the dom
 #     ctrl.predefinedNextPlan = alignplan
 
 
-# ------ HOUSE Definition of a house config -------------------------
+# -------- AUTOMATIC IECON DEVICE DISCOVERY ----------------
 
-eon_name = "eiot-16eda211b788"  # Ferdi's house
+sim.logMsg("---- IECON SCADA automatic neighbourhood entity detection ----")
 
-sm = MeterDev(name="house-" + eon_name, host=sim)
-sm.infuxTags["eon"] = eon_name  # Set the EoN value
+for eon_name in iecon_scada.entities_eon.keys():
 
-# --- CONSUMPTION ---- Load model of this house
-load = IeconLoadDev(host=sim,
+    sim.logMsg("- Searching EoN - " + eon_name)
+
+    eon = iecon_scada.entities_eon[eon_name]   # Get the EoN object, to search over the devices
+
+    # METER - PV - Generation
+    devices = eon.search_device_by_attribute(attributes={'CTYPEC': "generation", "CTYPE": "electricity"})
+
+    if len(devices) == 0:
+        sim.logWarning("  This house doesn't have a GENERATION entity, house is skipped from demkit!")
+        continue    # Skipp this house
+    elif not len(devices) == 1:
+        sim.logWarning("  There are more than one GENERATION entity, selecting first found!")
+
+    entity_generation = devices[0]
+
+    # METER - HOUSE LOAD - Consumption
+    devices = eon.search_device_by_attribute(attributes={'CTYPEC': "consumption", "CTYPE": "electricity"})
+
+    if len(devices) == 0:
+        sim.logWarning("  This house doesn't have a GENERATION entity, house is skipped from demkit!")
+        continue  # Skipp this house
+    elif not len(devices) == 1:
+        sim.logWarning("  There are more than one GENERATION entity, selecting first found!")
+
+    entity_consumption = devices[0]
+
+    # These are the entities found for CONSUMPTION and GENERATION
+    sim.logMsg("  Found generation entity : " + entity_generation)
+    sim.logMsg("  Found consumption entity: " + entity_consumption)
+
+    # ---- DEMKIT Registration of entities ------------------------------------
+
+    # ------ HOUSE Definition of a house config
+
+    sm = MeterDev(name="house-" + eon_name, host=sim)
+    sm.infuxTags["eon"] = eon_name  # Set the EoN value
+
+    # --- CONSUMPTION ---- Load model of this house
+    load = IeconLoadDev(host=sim,
+                        iecon_scada=iecon_scada,
+                        iecon_eon_name=eon_name,
+                        iecon_eond_name=entity_consumption,
+                        influx=True,
+                        )
+    load.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
+    load.strictComfort = not useIslanding
+    sm.addDevice(load)
+
+    #
+    # loadctrl = LoadCtrl(name=load.eond_name + "-LOADCTRL",
+    #                     dev=load,
+    #                     ctrl=ctrl,
+    #                     host=sim)
+    # load.perfectPredictions = usePP  # Use perfect predictions or not
+    # loadctrl.useEventControl = useEC  # Use event-based control
+    # loadctrl.timeBase = ctrlTimeBase  # TimeBase for controllers
+    # loadctrl.strictComfort = not useIslanding
+    # loadctrl.islanding = useIslanding
+
+
+    # --- PV ---- Solar panel based on provided data
+    sun = None
+    pv = IeconPvDev(host=sim,
                     iecon_scada=iecon_scada,
                     iecon_eon_name=eon_name,
-                    iecon_eond_name="totaalverbruik-16eda211b788",
-                    influx=True,
-                    )
-load.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
-load.strictComfort = not useIslanding
+                    iecon_eond_name=entity_generation,
+                    influx=True)
+    pv.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
+    pv.strictComfort = not useIslanding
+    sm.addDevice(pv)
 
-
-sm.addDevice(load)
-#
-# loadctrl = LoadCtrl(name=load.eond_name + "-LOADCTRL",
-#                     dev=load,
-#                     ctrl=ctrl,
-#                     host=sim)
-# load.perfectPredictions = usePP  # Use perfect predictions or not
-# loadctrl.useEventControl = useEC  # Use event-based control
-# loadctrl.timeBase = ctrlTimeBase  # TimeBase for controllers
-# loadctrl.strictComfort = not useIslanding
-# loadctrl.islanding = useIslanding
-
-
-
-# --- PV ---- Solar panel based on provided data
-sun = None
-pv = IeconPvDev(host=sim,
-                iecon_scada=iecon_scada,
-                iecon_eon_name=eon_name,
-                iecon_eond_name="omvormer-16eda211b788",
-                influx=True)
-pv.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
-pv.strictComfort = not useIslanding
-
-# pvpc = LivePvCtrl(pv.eond_name + "PVCTRL", pv, ctrl, sun, sim)
-# pvpc.useEventControl = useEC
-# pvpc.perfectPredictions = usePP
-# pvpc.strictComfort = not useIslanding
-# pvpc.islanding = useIslanding
-#
-# sm.addDevice(pv)
-#
+    # pvpc = LivePvCtrl(pv.eond_name + "PVCTRL", pv, ctrl, sun, sim)
+    # pvpc.useEventControl = useEC
+    # pvpc.perfectPredictions = usePP
+    # pvpc.strictComfort = not useIslanding
+    # pvpc.islanding = useIslanding
 
 # The last thing to do is starting the simulation!
 sim.startSimulation()
