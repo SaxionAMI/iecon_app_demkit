@@ -29,6 +29,15 @@ def build(folder_installation="./", global_env={}):
     config['db']['influx']['token'] = global_env.get("IECON_INFLUXDB2_ADMIN_TOKEN", "")
     config['db']['influx']['org'] = global_env.get("IECON_INFLUXDB2_ORG", "iecon")
 
+    # MQTT spb configuration
+    config['mqtt_spb']['address'] = global_env.get("IECON_MQTT_HOST", "localhost")
+    config['mqtt_spb']['port'] = global_env.get("IECON_MQTT_PORT", 1883)
+    config['mqtt_spb']['username'] = global_env.get("IECON_MQTT_USER", "")
+    config['mqtt_spb']['password'] = global_env.get("IECON_MQTT_PASS", "")
+
+    # Application path
+    config["app_path"] = folder_installation
+
     # print(config)
 
     # Save configuration file

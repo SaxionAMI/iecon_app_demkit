@@ -1,21 +1,33 @@
 
 # User models location
 env:
-  path: /app/components/
+  path: components/
 
 workspace:
-  path: /app/workspace/
+  path: workspace/
 
 # Database settings
 db:
   influx:
-    address: http://localhost
-    port: "8086"
+    address: localhost
+    port: 8087
     dbname: demkit
-    username:
-    password:
-    token:
+    username: iecon
+    password: Wd%WMHQIvT0tweVyWynO
+    token: 4Kfrb4jxdppFVuG%vnEiVv%Ec11XBugi2Sr16pGR
     org: iecon
+
+# IECON parameters
+spb_domain: SERENE
+
+mqtt_spb:
+  address: localhost
+  port: 1882
+  username: iecon
+  password: fVB3b53fNTqGkJa%edMu
+
+# Application path
+app_path: /usr/lib/iecon/application/iecon_app_demkit
 
 # Variable output for logs ans backups (stored within the workspace folder of a model by default)
 # Do not forget the traling slash!
