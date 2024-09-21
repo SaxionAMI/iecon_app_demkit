@@ -36,6 +36,10 @@ class IeconLoadDev(LoadDev):
         self.lastUpdate = -1
         self.updateInterval = 1  # Update every minute
 
+        # InfluxDB extra measurement tags
+        self.infuxTags = {"spb_eon": iecon_eon_name,
+                          "spb_eond": iecon_eond_name}
+
         self._data = dict()     # Local storage of device data
 
         # Subscribe to the device data
@@ -85,17 +89,31 @@ class IeconLoadDev(LoadDev):
 
         # If there is no data to log, exit inmediately
         if not self._data:
-            print("No data")
+            # print("No data")
             return
 
         self.lockState.acquire()
 
-        # Default data to log is the power consumption for each commodity
-        # The try-except is in place to ensure that a demonstration does not crash due to small time synchronization errors
+        # POWER VALUES
         try:
             for c in self.commodities:
-                for key in self._data:
-                    self.logValue(key + "." + c, self._data[key])
+                self.logValue("W-power.real.c." + c, self.consumption[c].real)
+                self.logValue("W-power.imag.c." + c, self.consumption[c].imag)
+                if c in self.plan and len(self.plan[c]) > 0:
+                    self.logValue("W-power.plan.real.c." + c, self.plan[c][0][1].real)
+                    self.logValue("W-power.plan.imag.c." + c, self.plan[c][0][1].imag)
+        except:
+            pass
+
+        # OTHER DATA
+        try:
+            # TODO at the moment it is enforced for commodity ELECTRICITY
+            for key in self._data:
+                self.logValue(key + ".ELECTRICITY", self._data[key])
+
+            # for c in self.commodities:
+            #     for key in self._data:
+            #         self.logValue(key + "." + c, self._data[key])
         except:
             pass
 

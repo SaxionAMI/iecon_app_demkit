@@ -65,6 +65,8 @@ class MeterDev(LoadDev):
 			self.watchlist += ["costs", "imported", "exported"]
 			self.persistence.setWatchlist(self.watchlist)
 
+		self.infuxTags = {}
+
 	def requestTickets(self, time):
 		# self.host.registerTicket(30000) # preTick
 		# self.host.registerTicket(101000) # timeTick

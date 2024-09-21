@@ -51,6 +51,7 @@ class Device(Entity):
 
 		# Persistence
 		self.watchlist = ["consumption", "plan"]
+		self.infuxTags = None
 
 	def setPlan(self,  plan):
 		self.lockPlanning.acquire()
@@ -122,11 +123,23 @@ class Device(Entity):
 		return frequency
 		
 	def logValue(self, measurement,  value, time=None, deltatime=None):
-# 		tags = {'devtype':self.devtype,  'name':self.name}
-# 		values = {measurement:value}
-# 		self.host.logValue(self.type,  tags,  values, time)
 
-		data = self.type+",devtype="+self.devtype+",name="+self.name+" "+measurement+"="+str(value)
+		# If there is no tags, initialize emtpy
+		if self.infuxTags is None:
+			self.infuxTags = {}
+		self.infuxTags.update({'devtype': self.devtype, 'name': self.name})		# Always override this values
+
+		# Serialize the tags string
+		tags_str = ""
+		for k, v in self.infuxTags.items():
+			tags_str += ",%s=%s" % (k, v)
+		tags_str = tags_str.replace(" ", "_")    # remove spaces, problematic for influxdb
+
+		# Get Influx Data point
+		data = self.type + tags_str + " " + measurement + "=" + str(value)
+
+		# print("INFLUX DATA - " + data)
+
 		self.host.logValuePrepared(data, time, deltatime)
 
 	def requestPlanning(self):

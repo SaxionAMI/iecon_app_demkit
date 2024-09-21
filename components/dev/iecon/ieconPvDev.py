@@ -35,6 +35,10 @@ class IeconPvDev(CurtDev):
         self.updateInterval = 1
         self.retrieving = False
 
+        # InfluxDB extra measurement tags
+        self.infuxTags = {"spb_eon": iecon_eon_name,
+                          "spb_eond": iecon_eond_name}
+
         # IECON Subscribe to the device data
         self.device = self._scada.get_edge_node_device(eon_name=self.eon_name,
                                                        eond_name=self.eond_name,
@@ -86,17 +90,33 @@ class IeconPvDev(CurtDev):
 
         # If there is no data to log, exit inmediately
         if not self._data:
-            print("No data")
+            # print("No data")
             return
 
         self.lockState.acquire()
 
-        # Default data to log is the power consumption for each commodity
-        # The try-except is in place to ensure that a demonstration does not crash due to small time synchronization errors
+        # POWER VALUES
         try:
             for c in self.commodities:
-                for key in self._data:
-                    self.logValue(key + "." + c, self._data[key])
+                self.logValue("W-power.real.c." + c, self.consumption[c].real)
+                self.logValue("W-power.imag.c." + c, self.consumption[c].imag)
+                if c in self.plan and len(self.plan[c]) > 0:
+                    self.logValue("W-power.plan.real.c." + c, self.plan[c][0][1].real)
+                    self.logValue("W-power.plan.imag.c." + c, self.plan[c][0][1].imag)
+        except:
+            pass
+
+        # OTHER DATA
+        try:
+
+            # TODO at the moment it is enforced for commodity ELECTRICITY
+            for key in self._data:
+                self.logValue(key + ".ELECTRICITY", self._data[key])
+
+            # for c in self.commodities:
+            #     for key in self._data:
+            #         self.logValue(key + "." + c, self._data[key])
+
         except:
             pass
 

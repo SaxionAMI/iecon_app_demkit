@@ -198,7 +198,8 @@ sim.logMsg("IECON SCADA object initialized, detected %d edge entities in the dom
 
 eon_name = "eiot-16eda211b788"  # Ferdi's house
 
-sm = MeterDev(name=eon_name, host=sim)
+sm = MeterDev(name="house-" + eon_name, host=sim)
+sm.infuxTags["eon"] = eon_name  # Set the EoN value
 
 # --- CONSUMPTION ---- Load model of this house
 load = IeconLoadDev(host=sim,
@@ -209,7 +210,7 @@ load = IeconLoadDev(host=sim,
                     )
 load.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
 load.strictComfort = not useIslanding
-load.infuxTags = {"name": load.eond_name}  # Needed to get the load from the database
+
 
 sm.addDevice(load)
 #
@@ -234,7 +235,6 @@ pv = IeconPvDev(host=sim,
                 influx=True)
 pv.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
 pv.strictComfort = not useIslanding
-pv.infuxTags = {"name": pv.eond_name}  # Needed to get the load from the database
 
 # pvpc = LivePvCtrl(pv.eond_name + "PVCTRL", pv, ctrl, sun, sim)
 # pvpc.useEventControl = useEC
