@@ -18,24 +18,36 @@
 # Each config item should only appear once, comment the others
 # Rename this file to userconf.py
 
+import os
 from ruamel.yaml import YAML
 from pytz import timezone
-
-
-demCfg = {}
 
 # -------
 #
 #   SET CONFIGURATIONS IN "config.yml" FILE
 #
 # -------
+def load_demkit_config(config_path=None):
 
-# Loading the data from the config.yml
-try:
-    with open("/app/conf/config.yml") as fr:
-        demCfg = YAML().load(fr)
-except Exception as e:
-    print("ERROR while loading usercnf data - " + str(e))
+    temp = {}
 
-# Setting timezone object
-demCfg['timezone'] = timezone(demCfg['timezonestr'])
+    # If emtpy config path, load the default config file.
+    if config_path is None:
+        config_path = os.path.join(os.path.dirname(__file__), "config.yml")
+
+    # Loading the data from the config.yml
+    try:
+        with open(config_path) as fr:
+            temp = YAML().load(fr)
+
+        # Setting timezone object
+        temp['timezone'] = timezone(temp['timezonestr'])
+
+    except Exception as e:
+        print("ERROR while loading usercnf data - " + str(e))
+        pass
+
+    return temp
+
+demCfg = load_demkit_config()  # Load the default config file
+
