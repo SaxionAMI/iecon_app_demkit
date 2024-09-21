@@ -184,6 +184,16 @@ class MqttSpbEntityScada(MqttSpbEntity):
         # Call the parent method
         return super().disconnect(skip_death_publish)
 
+    def is_initialized(self):
+        """
+        Returns True if SCADA application is initialized.
+        This initialization time is used to retrieve all BIRTH messages from the broker during an specific timeout.
+
+            Returns: True when initialized
+
+        """
+        return self._spb_initialized
+
     def _mqtt_on_connect(self, client, userdata, flags, rc):
 
         # Call the parent method

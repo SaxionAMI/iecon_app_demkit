@@ -157,7 +157,12 @@ while not _connected:
         sim.logWarning("  Error, could not connect. Trying again in a few seconds ...")
         time.sleep(3)
 
-sim.logMsg("Connected to IECON data broker")
+sim.logMsg("Connected to IECON data broker, waiting SCADA to be initialized. . .")
+
+while not iecon_scada.is_initialized():
+    time.sleep(0.1)
+
+sim.logMsg("IECON SCADA object initialized, detected %d edge entities in the domain." % len(iecon_scada.entities_eon))
 
 # scada.publish_birth()  # (Commented so the scada is not published in spb - ghost app) Send birth message for the SCADA application
 
