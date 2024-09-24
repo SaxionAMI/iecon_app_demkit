@@ -2,11 +2,11 @@ import datetime
 import logging
 from typing import Callable, Any
 
-from .spb_protobuf import Payload
+from iecon.dev.mqtt_spb_wrapper.spb_protobuf import Payload
 
 from google.protobuf.json_format import MessageToDict
-from .spb_protobuf import getDdataPayload, getNodeBirthPayload, getDeviceBirthPayload
-from .spb_protobuf import addMetric, MetricDataType
+from iecon.dev.mqtt_spb_wrapper.spb_protobuf import getDdataPayload, getNodeBirthPayload, getDeviceBirthPayload
+from iecon.dev.mqtt_spb_wrapper.spb_protobuf import addMetric, MetricDataType
 
 
 class SpbEntity:

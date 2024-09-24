@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import time
 import random
-from pprint import pprint
 from datetime import datetime
 from pytz import timezone
+from pprint import pprint
 
 ### MODULES ###
 # Import the modules that you require for the model
@@ -43,15 +42,14 @@ from ctrl.live.livePvCtrl import LivePvCtrl
 from ctrl.groupCtrl import GroupCtrl  # Group controller to control multiple devices, implements Profile Steering
 
 # IECON components
-from dev.iecon import MqttSpbEntityScada
-from dev.iecon.ieconLoadDev import IeconLoadDev
-from dev.iecon.ieconPvDev import IeconPvDev
+from iecon.dev.mqtt_spb_wrapper import MqttSpbEntityScada
+from iecon.dev.ieconLoadDev import IeconLoadDev
+from iecon.dev.ieconPvDev import IeconPvDev
 
 # Load Demkit Configuration
 from conf.usrconf import demCfg
 
-spb_domain = demCfg.get("spb_domain", "IECON")
-
+SPB_DOMAIN_ID = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")
 
 # General settings - Locale
 timeZone = timezone('Europe/Amsterdam')
@@ -120,7 +118,7 @@ sim.timezonestr = timeZoneStr
 sim.latitude = latitude
 sim.longitude = longitude
 
-sim.db.database = spb_domain + "-DEMKIT"
+sim.db.database = SPB_DOMAIN_ID + "-DEMKIT"
 sim.db.prefix = ""
 sim.logDevices = logDevices
 sim.logControllers = True  # NOTE: Controllers do not log so much, keep this on True (default)!
@@ -138,21 +136,26 @@ sim.enablePersistence = enablePersistence
 
 
 # --- IECON ---  Create the SCADA object to handle device discovery, data updates and send commands
-iecon_scada = MqttSpbEntityScada(spb_domain_name=spb_domain,
-                                 spb_scada_name="demkit-ems",
-                                 debug_info=True,
-                                 )
+iecon_scada = MqttSpbEntityScada(
+    spb_domain_name=SPB_DOMAIN_ID,
+    spb_scada_name="demkit-ems",
+    debug_info=True,
+)
 
 # Connect to the MQTT spB broker
 _connected = False
 while not _connected:
     sim.logMsg(
-        "Connecting to IECON data broker %s:%d ..." % (demCfg["mqtt_spb"]["address"], demCfg["mqtt_spb"]["port"]))
-    _connected = iecon_scada.connect(host=demCfg["mqtt_spb"]["address"],
-                                     port=demCfg["mqtt_spb"]["port"],
-                                     user=demCfg["mqtt_spb"]["username"],
-                                     password=demCfg["mqtt_spb"]["password"],
-                                     )
+        "Connecting to IECON data broker %s:%d ..." % (demCfg["IECON_MQTT_HOST"], demCfg["IECON_MQTT_PORT"])
+    )
+
+    _connected = iecon_scada.connect(
+        host=demCfg["IECON_MQTT_HOST"],
+        port=demCfg["IECON_MQTT_PORT"],
+        user=demCfg["IECON_MQTT_USER"],
+        password=demCfg["IECON_MQTT_PASS"],
+    )
+
     if not _connected:
         sim.logWarning("  Error, could not connect. Trying again in a few seconds ...")
         time.sleep(3)
@@ -165,7 +168,6 @@ while not iecon_scada.is_initialized():
 sim.logMsg("IECON SCADA object initialized, detected %d edge entities in the domain." % len(iecon_scada.entities_eon))
 
 # scada.publish_birth()  # (Commented so the scada is not published in spb - ghost app) Send birth message for the SCADA application
-
 
 #
 # # ADDING A HEMS - add a controller if necessary
@@ -206,24 +208,31 @@ for eon_name in iecon_scada.entities_eon.keys():
     eon = iecon_scada.entities_eon[eon_name]   # Get the EoN object, to search over the devices
 
     # METER - PV - Generation
-    devices = eon.search_device_by_attribute(attributes={'CTYPEC': "generation", "CTYPE": "electricity"})
+    devices = eon.search_device_by_attribute(attributes={
+        'CTYPEC': "generation",
+        "CTYPE": "electricity",
+    })
 
     if len(devices) == 0:
         sim.logWarning("  This house doesn't have a GENERATION entity, house is skipped from demkit!")
         continue    # Skipp this house
     elif not len(devices) == 1:
-        sim.logWarning("  There are more than one GENERATION entity, selecting first found!")
+        sim.logWarning("  There are more than one GENERATION entity, selecting first found! - " + str(devices))
 
     entity_generation = devices[0]
 
     # METER - HOUSE LOAD - Consumption
-    devices = eon.search_device_by_attribute(attributes={'CTYPEC': "consumption", "CTYPE": "electricity"})
+    devices = eon.search_device_by_attribute(attributes={
+        'CTYPEC': "consumption",
+        "CTYPE": "electricity",
+        "ETYPE": "powermeter",
+    })
 
     if len(devices) == 0:
         sim.logWarning("  This house doesn't have a GENERATION entity, house is skipped from demkit!")
         continue  # Skipp this house
     elif not len(devices) == 1:
-        sim.logWarning("  There are more than one GENERATION entity, selecting first found!")
+        sim.logWarning("  There are more than one GENERATION entity, selecting first found! - " + str(devices))
 
     entity_consumption = devices[0]
 

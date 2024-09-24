@@ -1,4 +1,4 @@
-# Copyright 2023 University of Twente
+# Copyright 2024 Saxion University of Applied Sciences
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dev.curtDev import CurtDev
+from dev.loadDev import LoadDev
 
-from .ieconTools import iecon_parse_spb_data_2_demkit
-from .mqtt_spb_entity_scada import MqttSpbEntityScada
+from iecon.dev.mqtt_spb_wrapper.mqtt_spb_entity_scada import MqttSpbEntityScada
+from iecon.dev.tools.ieconDevTools import iecon_parse_spb_data_2_demkit
 
 
-class IeconPvDev(CurtDev):
+class IeconLoadDev(LoadDev):
 
-    def __init__(self, host, iecon_scada: MqttSpbEntityScada, iecon_eon_name: str, iecon_eond_name : str, influx=True, reader=None):
-        CurtDev.__init__(self, iecon_eond_name, host, influx, reader)
-
-        self.devtype = "Curtailable"
+    def __init__(self, host,
+                 iecon_scada: MqttSpbEntityScada, iecon_eon_name: str, iecon_eond_name : str,
+                 influx=False, reader=None,
+                 ):
+        LoadDev.__init__(self, iecon_eond_name, host, influx, reader)
 
         # Save parameters locally
         self._scada = iecon_scada
@@ -32,34 +33,33 @@ class IeconPvDev(CurtDev):
 
         # Update rate:
         self.lastUpdate = -1
-        self.updateInterval = 1
-        self.retrieving = False
+        self.updateInterval = 1  # Update every minute
 
         # InfluxDB extra measurement tags
         self.infuxTags = {"spb_eon": iecon_eon_name,
                           "spb_eond": iecon_eond_name}
 
-        # IECON Subscribe to the device data
+        self._data = dict()     # Local storage of device data
+
+        # Subscribe to the device data
         self.device = self._scada.get_edge_node_device(eon_name=self.eon_name,
                                                        eond_name=self.eond_name,
                                                        )
+        # To display the data received ( for DEBUG -  Commented on deployment )
+        self.device.callback_data = self._spb_dev_data
 
-        # Callback function registration
-        self.device.callback_data = self._spb_dev_data  # To display the data received ( Commented on deployment )
-
-        self._data = dict()     # Local storage of device data
-
+    # Fixme make async
     def preTick(self, time, deltatime=0):
 
         # We should not be a bad citizen to the service
         self.lockState.acquire()
-
         if (self.host.time() - self.lastUpdate) > self.updateInterval:
 
             if self.device.is_alive():
 
                 # Get the data from the device
-                value = float(self.device.data.get_value("POW"))  # This will retrieve the last value
+                # This will retrieve the last value received. You can get the timestamp
+                value = float(self.device.data.get_value("POW")) * self.scaling
 
                 # Now, value contains the power production by the pv setup, now we can set it as consumption:
                 for c in self.commodities:
@@ -68,12 +68,10 @@ class IeconPvDev(CurtDev):
                 # If all succeeded:
                 self.lastUpdate = self.host.time()
             else:
-                # self.logWarning("%s - IECON EoND is offline, data ignored " % self.device.entity_name)
+                # self.logWarning("%s - IECON EoND is offline, data ignored" % self.device.entity_domain)
                 pass
 
         self.lockState.release()
-        return
-
 
     # IECON Device DATA callback - Real time data messages from the device
     def _spb_dev_data(self, msg):
@@ -109,7 +107,6 @@ class IeconPvDev(CurtDev):
 
         # OTHER DATA
         try:
-
             # TODO at the moment it is enforced for commodity ELECTRICITY
             for key in self._data:
                 self.logValue(key + ".ELECTRICITY", self._data[key])
@@ -117,7 +114,6 @@ class IeconPvDev(CurtDev):
             # for c in self.commodities:
             #     for key in self._data:
             #         self.logValue(key + "." + c, self._data[key])
-
         except:
             pass
 
@@ -125,3 +121,4 @@ class IeconPvDev(CurtDev):
         self._data = {}
 
         self.lockState.release()
+

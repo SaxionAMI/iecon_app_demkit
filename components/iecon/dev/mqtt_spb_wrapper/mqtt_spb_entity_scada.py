@@ -1,8 +1,8 @@
 import time
 from typing import Dict, Any
 
-from .spb_protobuf import getDdataPayload
-from .spb_protobuf import addMetric
+from iecon.dev.mqtt_spb_wrapper.spb_protobuf import getDdataPayload
+from iecon.dev.mqtt_spb_wrapper.spb_protobuf import addMetric
 
 from .spb_base import SpbTopic, SpbPayload
 from .mqtt_spb_entity import SpbEntity

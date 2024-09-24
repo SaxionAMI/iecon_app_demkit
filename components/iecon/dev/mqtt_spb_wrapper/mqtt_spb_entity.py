@@ -4,7 +4,7 @@ import time
 import paho.mqtt.client as mqtt
 
 from .spb_base import SpbEntity, SpbTopic, SpbPayload
-from .spb_protobuf import getNodeDeathPayload
+from iecon.dev.mqtt_spb_wrapper.spb_protobuf import getNodeDeathPayload
 
 
 class MqttSpbEntity(SpbEntity):
