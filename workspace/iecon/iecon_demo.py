@@ -50,6 +50,7 @@ from iecon.dev.ieconPvDev import IeconPvDev
 from conf.usrconf import demCfg
 
 SPB_DOMAIN_ID = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")
+IECON_DEBUG_EN = demCfg.get("IECON_DEBUG_EN", False)
 
 # General settings - Locale
 timeZone = timezone('Europe/Amsterdam')
@@ -66,12 +67,6 @@ logDevices = True
 
 # Restore data on restart (for demo purposes)
 enablePersistence = True
-
-# Restore data on restart (for demo purposes)
-enablePersistence = True
-
-# Device specific:
-useEliaPV = False
 
 # Enable control:
 # NOTE: AT MOST ONE OF THESE MAY BE TRUE! They can all be False, however
@@ -118,12 +113,11 @@ sim.timezonestr = timeZoneStr
 sim.latitude = latitude
 sim.longitude = longitude
 
-sim.db.database = SPB_DOMAIN_ID + "-DEMKIT"
-sim.db.prefix = ""
 sim.logDevices = logDevices
 sim.logControllers = True  # NOTE: Controllers do not log so much, keep this on True (default)!
 sim.logFlow = False
 sim.enablePersistence = enablePersistence
+sim.extendedLogging = False
 
 # Not needed stuff for now, but kept as reference
 
@@ -139,7 +133,7 @@ sim.enablePersistence = enablePersistence
 iecon_scada = MqttSpbEntityScada(
     spb_domain_name=SPB_DOMAIN_ID,
     spb_scada_name="demkit-ems",
-    debug_info=True,
+    debug_info=IECON_DEBUG_EN,
 )
 
 # Connect to the MQTT spB broker
@@ -169,7 +163,7 @@ sim.logMsg("IECON SCADA object initialized, detected %d edge entities in the dom
 
 # scada.publish_birth()  # (Commented so the scada is not published in spb - ghost app) Send birth message for the SCADA application
 
-#
+
 # # ADDING A HEMS - add a controller if necessary
 # cp = None
 # if useCongestionPoints:
@@ -178,9 +172,9 @@ sim.logMsg("IECON SCADA object initialized, detected %d edge entities in the dom
 #     cp.setLowerLimit('ELECTRICITY', -3 * 25 * 230)
 #
 # if useCongestionPoints:
-#     ctrl = GroupCtrl("SereneCtrl", sim, None, cp)
+#     ctrl = GroupCtrl("HEMS", sim, None, cp)
 # else:
-#     ctrl = GroupCtrl("SereneCtrl", sim, None)  # params: name, simHost
+#     ctrl = GroupCtrl("HEMS", sim, None)  # params: name, simHost
 #     ctrl.minImprovement = 0.01
 #     if useMultipleCommits:
 #         ctrl.maxIters = 4
@@ -258,12 +252,13 @@ for eon_name in iecon_scada.entities_eon.keys():
     load.strictComfort = not useIslanding
     sm.addDevice(load)
 
-    #
-    # loadctrl = LoadCtrl(name=load.eond_name + "-LOADCTRL",
-    #                     dev=load,
-    #                     ctrl=ctrl,
-    #                     host=sim)
-    # load.perfectPredictions = usePP  # Use perfect predictions or not
+    # loadctrl = LoadCtrl(
+    #     name=load.eond_name + "-LOADCTRL",
+    #     dev=load,
+    #     ctrl=ctrl,
+    #     host=sim
+    # )
+    # loadctrl.perfectPredictions = usePP  # Use perfect predictions or not
     # loadctrl.useEventControl = useEC  # Use event-based control
     # loadctrl.timeBase = ctrlTimeBase  # TimeBase for controllers
     # loadctrl.strictComfort = not useIslanding

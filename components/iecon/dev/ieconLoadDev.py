@@ -48,33 +48,23 @@ class IeconLoadDev(LoadDev):
         # To display the data received ( for DEBUG -  Commented on deployment )
         self.device.callback_data = self._spb_dev_data
 
-    # Fixme make async
-    def preTick(self, time, deltatime=0):
-
-        # We should not be a bad citizen to the service
-        self.lockState.acquire()
-        if (self.host.time() - self.lastUpdate) > self.updateInterval:
-
-            if self.device.is_alive():
-
-                # Get the data from the device
-                # This will retrieve the last value received. You can get the timestamp
-                value = float(self.device.data.get_value("POW")) * self.scaling
-
-                # Now, value contains the power production by the pv setup, now we can set it as consumption:
-                for c in self.commodities:
-                    self.consumption[c] = complex(value / len(self.commodities), 0.0)
-
-                # If all succeeded:
-                self.lastUpdate = self.host.time()
-            else:
-                # self.logWarning("%s - IECON EoND is offline, data ignored" % self.device.entity_domain)
-                pass
-
-        self.lockState.release()
-
     # IECON Device DATA callback - Real time data messages from the device
-    def _spb_dev_data(self, msg):
+    def _spb_dev_data(self, msg: dict):
+        """
+        Device callback on new data
+
+        This function is called everytime that the device sends data
+
+        Example of msg data:
+
+        {"timestamp":"1727187928026","metrics":[{"name":"POW","timestamp":"1727187928026","datatype":10,"doubleValue":117.5999984741211,"value":117.5999984741211},{"name":"POW_APP","timestamp":"1727187928026","datatype":10,"doubleValue":197.10000610351562,"value":197.10000610351562},{"name":"POW_REAC","timestamp":"1727187928026","datatype":10,"doubleValue":-158.1999969482422,"value":-158.1999969482422},{"name":"CURR","timestamp":"1727187928026","datatype":10,"doubleValue":0.8579999804496765,"value":0.8579999804496765}],"seq":"79"}
+
+        Args:
+            msg: spB data message dictionary
+
+        Returns:
+
+        """
 
         # self.logMsg("%s - DATA received - %s" % (self.device.spb_eon_name, msg))
 
@@ -82,6 +72,32 @@ class IeconLoadDev(LoadDev):
         self._data.update(iecon_parse_spb_data_2_demkit(msg))
 
         pass
+
+    # Fixme make async
+    def preTick(self, time, deltatime=0):
+
+        # We should not be a bad citizen to the service
+        self.lockState.acquire()
+        if (self.host.time() - self.lastUpdate) > self.updateInterval:
+
+            # Check if device is online
+            if self.device.is_alive():
+
+                # Get the data from the device
+                # NOTE: the value returned is the last one. You can check timestamp property to validate value.
+                value = float(self.device.data.get_value("POW"))
+
+                # Update consumption.
+                self.consumption['ELECTRICITY'] = complex(value, 0.0)
+
+                # If all succeeded:
+                self.lastUpdate = self.host.time()
+            else:
+                # TODO - Any action if device is disconnected?
+                self.consumption['ELECTRICITY'] = complex(0.0, 0.0)
+                self.logWarning("%s - IECON EoND is offline, power set to zero." % self.device.entity_domain)
+
+        self.lockState.release()
 
     # LogStats() is called at the end of a time interval
     # This is your chance to log data
@@ -94,28 +110,32 @@ class IeconLoadDev(LoadDev):
 
         self.lockState.acquire()
 
-        # POWER VALUES
+        # ---- POWER VALUES ----
         try:
             for c in self.commodities:
                 self.logValue("W-power.real.c." + c, self.consumption[c].real)
-                self.logValue("W-power.imag.c." + c, self.consumption[c].imag)
+                if self.host.extendedLogging:
+                    self.logValue("W-power.imag.c." + c, self.consumption[c].imag)
+
                 if c in self.plan and len(self.plan[c]) > 0:
                     self.logValue("W-power.plan.real.c." + c, self.plan[c][0][1].real)
-                    self.logValue("W-power.plan.imag.c." + c, self.plan[c][0][1].imag)
+                    if self.host.extendedLogging:
+                        self.logValue("W-power.plan.imag.c." + c, self.plan[c][0][1].imag)
         except:
             pass
 
-        # OTHER DATA
-        try:
-            # TODO at the moment it is enforced for commodity ELECTRICITY
-            for key in self._data:
-                self.logValue(key + ".ELECTRICITY", self._data[key])
+        # ---- OTHER DATA - If enabled ----
+        if self.host.extendedLogging:
+            try:
+                # TODO at the moment it is enforced for commodity ELECTRICITY
+                for key in self._data:
+                    self.logValue(key + ".ELECTRICITY", self._data[key])
 
-            # for c in self.commodities:
-            #     for key in self._data:
-            #         self.logValue(key + "." + c, self._data[key])
-        except:
-            pass
+                # for c in self.commodities:
+                #     for key in self._data:
+                #         self.logValue(key + "." + c, self._data[key])
+            except:
+                pass
 
         # Reset data till next iteration, it will be updated automatically when device send data
         self._data = {}
