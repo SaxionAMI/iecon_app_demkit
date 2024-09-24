@@ -1,0 +1,60 @@
+#----------------------------------------------------------------------------
+#   IECON Parameters
+#----------------------------------------------------------------------------
+
+#------ SparkplugB Parameters
+IECON_SPB_DOMAIN_ID:
+
+#------ MQTT server config and credentials
+IECON_MQTT_HOST: localhost
+IECON_MQTT_PORT: 1883
+IECON_MQTT_USER:
+IECON_MQTT_PASS:
+
+#------ InfluxDB 2x server config and credentials
+IECON_INFLUXDB2_HOST: localhost
+IECON_INFLUXDB2_PORT: 8087
+IECON_INFLUXDB2_USER:
+IECON_INFLUXDB2_PASS:
+IECON_INFLUXDB2_ADMIN_TOKEN:
+IECON_INFLUXDB2_ORG:
+
+# Debug messages from IECON Devices
+IECON_DEBUG_EN: False
+
+#----------------------------------------------------------------------------
+#   DEMKIT Parameters
+#----------------------------------------------------------------------------
+
+# User models location
+env:
+  path: components/
+workspace:
+  path: workspace/
+
+# Database settings
+db:
+  influx:
+    address: localhost
+    port: 8087
+    username:
+    password:
+    token:
+    org:
+    dbname:
+
+# Variable output for logs and backups (stored within the workspace folder of a model by default)
+# Do not forget the trailing slash!
+var:
+  backup: var/backup/
+  databasebackup: var/backup/database/
+  log: var/log/
+
+# Timezone information
+timezonestr: Europe/Amsterdam
+
+# STATIC SETTINGS
+# You should not modify lines below
+
+# Version control, this config is valid for V4 of DEMKit
+ver: 4.1

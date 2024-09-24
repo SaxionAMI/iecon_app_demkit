@@ -22,6 +22,7 @@ import os
 from ruamel.yaml import YAML
 from pytz import timezone
 
+
 # -------
 #
 #   SET CONFIGURATIONS IN "config.yml" FILE
@@ -33,7 +34,7 @@ def load_demkit_config(config_path=None):
 
     # If emtpy config path, load the default config file.
     if config_path is None:
-        config_path = os.path.join(os.path.dirname(__file__), "config.yml")
+        config_path = os.path.join(os.path.dirname(__file__), "..", "config.yml")
 
     # Loading the data from the config.yml
     try:
@@ -46,6 +47,8 @@ def load_demkit_config(config_path=None):
     except Exception as e:
         print("ERROR while loading usercnf data - " + str(e))
         pass
+
+    # print("Config:", temp)
 
     return temp
 
