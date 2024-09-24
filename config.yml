@@ -35,13 +35,19 @@ workspace:
 # Database settings
 db:
   influx:
-    address: localhost
-    port: 8087
+    address:
+    port:
     username:
     password:
     token:
     org:
     dbname:
+
+# Solcast API key
+solcast_api_key:
+
+# OpenWeather API Key
+openweather_api_key:
 
 # Variable output for logs and backups (stored within the workspace folder of a model by default)
 # Do not forget the trailing slash!

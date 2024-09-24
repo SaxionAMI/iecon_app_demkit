@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import time
 import random
 from datetime import datetime
@@ -51,6 +52,12 @@ from conf.usrconf import demCfg
 
 SPB_DOMAIN_ID = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")
 IECON_DEBUG_EN = demCfg.get("IECON_DEBUG_EN", False)
+
+# Missing configuration?
+if not demCfg["db"]["influx"]["address"]:
+    sys.stderr.write("\nERROR -  unknown or missing configuration. Please check config.yml.\n")
+    sys.stderr.write("Application finished !\n")
+    exit(1)
 
 # General settings - Locale
 timeZone = timezone('Europe/Amsterdam')
@@ -123,11 +130,10 @@ sim.extendedLogging = False
 
 # # Settings for Weather services
 # weather = OpenWeatherEnv("Weather", sim)
-# weather.apiKey = ""
+# weather.apiKey = demCfg.get("openweather_api_key", "")
 
-# sun = SolcastSunEnv("Sun", sim)
-# sun.apiKey = ""
-
+sun = SolcastSunEnv("Sun", sim)
+sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
 
 # --- IECON ---  Create the SCADA object to handle device discovery, data updates and send commands
 iecon_scada = MqttSpbEntityScada(
@@ -164,31 +170,31 @@ sim.logMsg("IECON SCADA object initialized, detected %d edge entities in the dom
 # scada.publish_birth()  # (Commented so the scada is not published in spb - ghost app) Send birth message for the SCADA application
 
 
-# # ADDING A HEMS - add a controller if necessary
-# cp = None
-# if useCongestionPoints:
-#     cp = CongestionPoint()
-#     cp.setUpperLimit('ELECTRICITY', 3 * 25 * 230)  # 3 phase 25A connection ELECTRICITY limits
-#     cp.setLowerLimit('ELECTRICITY', -3 * 25 * 230)
-#
-# if useCongestionPoints:
-#     ctrl = GroupCtrl("HEMS", sim, None, cp)
-# else:
-#     ctrl = GroupCtrl("HEMS", sim, None)  # params: name, simHost
-#     ctrl.minImprovement = 0.01
-#     if useMultipleCommits:
-#         ctrl.maxIters = 4
-#     else:
-#         ctrl.maxIters = 8
-#     ctrl.timeBase = ctrlTimeBase  # 900 is advised hre, must be a multiple of the simulation timeBase
-#     ctrl.useEventControl = useEC  # Enable / disable event-based control
-#     ctrl.isFleetController = True  # Very important to set this right in case of large structures. The root controller
-#                                    # needs to be a fleetcontroller anyways. See 4.3 of Hoogsteen's thesis
-#     ctrl.strictComfort = not useIslanding
-#     ctrl.islanding = useIslanding
-#     ctrl.planHorizon = 2 * int(24 * 3600 / ctrlTimeBase)
-#     ctrl.planInterval = int(24 * 3600 / ctrlTimeBase)
-#     ctrl.predefinedNextPlan = alignplan
+# ADDING A HEMS - add a controller if necessary
+cp = None
+if useCongestionPoints:
+    cp = CongestionPoint()
+    cp.setUpperLimit('ELECTRICITY', 3 * 25 * 230)  # 3 phase 25A connection ELECTRICITY limits
+    cp.setLowerLimit('ELECTRICITY', -3 * 25 * 230)
+
+if useCongestionPoints:
+    ctrl = GroupCtrl("HEMS", sim, None, cp)
+else:
+    ctrl = GroupCtrl("HEMS", sim, None)  # params: name, simHost
+    ctrl.minImprovement = 0.01
+    if useMultipleCommits:
+        ctrl.maxIters = 4
+    else:
+        ctrl.maxIters = 8
+    ctrl.timeBase = ctrlTimeBase  # 900 is advised hre, must be a multiple of the simulation timeBase
+    ctrl.useEventControl = useEC  # Enable / disable event-based control
+    ctrl.isFleetController = True  # Very important to set this right in case of large structures. The root controller
+                                   # needs to be a fleetcontroller anyways. See 4.3 of Hoogsteen's thesis
+    ctrl.strictComfort = not useIslanding
+    ctrl.islanding = useIslanding
+    ctrl.planHorizon = 2 * int(24 * 3600 / ctrlTimeBase)
+    ctrl.planInterval = int(24 * 3600 / ctrlTimeBase)
+    ctrl.predefinedNextPlan = alignplan
 
 
 # -------- AUTOMATIC IECON DEVICE DISCOVERY ----------------
@@ -252,17 +258,17 @@ for eon_name in iecon_scada.entities_eon.keys():
     load.strictComfort = not useIslanding
     sm.addDevice(load)
 
-    # loadctrl = LoadCtrl(
-    #     name=load.eond_name + "-LOADCTRL",
-    #     dev=load,
-    #     ctrl=ctrl,
-    #     host=sim
-    # )
-    # loadctrl.perfectPredictions = usePP  # Use perfect predictions or not
-    # loadctrl.useEventControl = useEC  # Use event-based control
-    # loadctrl.timeBase = ctrlTimeBase  # TimeBase for controllers
-    # loadctrl.strictComfort = not useIslanding
-    # loadctrl.islanding = useIslanding
+    loadctrl = LoadCtrl(
+        name="loadCtrl-" + load.eond_name,
+        dev=load,
+        ctrl=ctrl,
+        host=sim
+    )
+    loadctrl.perfectPredictions = usePP  # Use perfect predictions or not
+    loadctrl.useEventControl = useEC  # Use event-based control
+    loadctrl.timeBase = ctrlTimeBase  # TimeBase for controllers
+    loadctrl.strictComfort = not useIslanding
+    loadctrl.islanding = useIslanding
 
 
     # --- PV ---- Solar panel based on provided data
@@ -276,11 +282,11 @@ for eon_name in iecon_scada.entities_eon.keys():
     pv.strictComfort = not useIslanding
     sm.addDevice(pv)
 
-    # pvpc = LivePvCtrl(pv.eond_name + "PVCTRL", pv, ctrl, sun, sim)
-    # pvpc.useEventControl = useEC
-    # pvpc.perfectPredictions = usePP
-    # pvpc.strictComfort = not useIslanding
-    # pvpc.islanding = useIslanding
+    pvpc = LivePvCtrl("pvCtrl-" + pv.eond_name, pv, ctrl, sun, sim)
+    pvpc.useEventControl = useEC
+    pvpc.perfectPredictions = usePP
+    pvpc.strictComfort = not useIslanding
+    pvpc.islanding = useIslanding
 
 # The last thing to do is starting the simulation!
 sim.startSimulation()
