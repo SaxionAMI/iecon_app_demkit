@@ -15,9 +15,10 @@
 
 from hosts.host import Host
 import time as tm
+import datetime
 
 class LiveHost(Host):
-	def __init__(self, name = "host"):
+	def __init__(self, name="host"):
 		self.liveOperation = True
 
 		Host.__init__(self, name)
@@ -36,13 +37,15 @@ class LiveHost(Host):
 		self.writeDebug = True
 
 	def startSimulation(self):
-		#startup all entities
+
+		# startup all entities
 		self.startTime = int(tm.time())
+		self.logMsg("Simulation start time: " + datetime.datetime.utcfromtimestamp(self.startTime).isoformat())
 		Host.startSimulation(self)
 		
-		#simulate time
+		# simulate time
 		old = int(tm.time())
-		old = old - (old%self.timeBase)
+		old = old - (old % self.timeBase)
 
 		while True:
 			now = int(tm.time())

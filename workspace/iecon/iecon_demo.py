@@ -52,6 +52,7 @@ from conf.usrconf import demCfg
 
 SPB_DOMAIN_ID = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")
 IECON_DEBUG_EN = demCfg.get("IECON_DEBUG_EN", False)
+# IECON_DEBUG_EN = True
 
 # Missing configuration?
 if not demCfg["db"]["influx"]["address"]:
@@ -59,11 +60,13 @@ if not demCfg["db"]["influx"]["address"]:
     sys.stderr.write("Application finished !\n")
     exit(1)
 
-# General settings - Locale
+# ---------------------------------------------------------------------------------------------------------------------
+# --- General settings - Locale --------------------------------------------------------------------------------------
+
 timeZone = timezone('Europe/Amsterdam')
-startTime = int(timeZone.localize(datetime(2018, 1, 29)).timestamp())
-timeOffset = -1 * int(timeZone.localize(datetime(2018, 1, 1)).timestamp())
-alignplan = int(timeZone.localize(datetime(2019, 2, 13)).timestamp())
+startTime = int(timeZone.localize(datetime(2024, 9, 24, 0, 0, 0)).timestamp())
+timeOffset = -1 * int(timeZone.localize(datetime(2024, 9, 24)).timestamp())
+alignplan = int(timeZone.localize(datetime(2025, 9, 24)).timestamp())
 
 latitude = 52.330271  # OLST COORDINATES
 longitude = 6.111991
@@ -79,7 +82,8 @@ enablePersistence = True
 # NOTE: AT MOST ONE OF THESE MAY BE TRUE! They can all be False, however
 useCtrl = True  # Use smart control, defaults to Profile steering
 useAuction = False  # Use an auction instead, NOTE useMC must be False!
-usePlAuc = False  # Use a planned auction instead (Profile steering planning, auction realization), NOTE useMC must be False!
+usePlAuc = False  # Use a planned auction instead (Profile steering planning, auction realization),
+# NOTE useMC must be False!
 
 # Specific options for control
 useCongestionPoints = False  # Use congestionpoints
@@ -94,6 +98,9 @@ useQ = False  # Perform reactive ELECTRICITY optimization
 useMC = False  # Use three phases and multicommodity control
 clearDB = False  # Clear the database or not. NOTE If disabled, ensure that the database exists!!!
 # Note either EC or PP should be enabled
+
+# ---------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
 
 if useMC:
     assert (useAuction == False)
@@ -112,6 +119,7 @@ random.seed(1337)
 # First we need to instantiate the Host environment:
 sim = LiveHost()
 
+sim.startTime = startTime
 sim.timeBase = 10
 sim.tickInterval = 10
 sim.timeOffset = timeOffset
@@ -125,6 +133,7 @@ sim.logControllers = True  # NOTE: Controllers do not log so much, keep this on 
 sim.logFlow = False
 sim.enablePersistence = enablePersistence
 sim.extendedLogging = False
+sim.enableDebug = IECON_DEBUG_EN
 
 # Not needed stuff for now, but kept as reference
 
@@ -189,13 +198,12 @@ else:
     ctrl.timeBase = ctrlTimeBase  # 900 is advised hre, must be a multiple of the simulation timeBase
     ctrl.useEventControl = useEC  # Enable / disable event-based control
     ctrl.isFleetController = True  # Very important to set this right in case of large structures. The root controller
-                                   # needs to be a fleetcontroller anyways. See 4.3 of Hoogsteen's thesis
+    # needs to be a fleetcontroller anyways. See 4.3 of Hoogsteen's thesis
     ctrl.strictComfort = not useIslanding
     ctrl.islanding = useIslanding
     ctrl.planHorizon = 2 * int(24 * 3600 / ctrlTimeBase)
     ctrl.planInterval = int(24 * 3600 / ctrlTimeBase)
     ctrl.predefinedNextPlan = alignplan
-
 
 # -------- AUTOMATIC IECON DEVICE DISCOVERY ----------------
 
@@ -205,7 +213,7 @@ for eon_name in iecon_scada.entities_eon.keys():
 
     sim.logMsg("- Searching EoN - " + eon_name)
 
-    eon = iecon_scada.entities_eon[eon_name]   # Get the EoN object, to search over the devices
+    eon = iecon_scada.entities_eon[eon_name]  # Get the EoN object, to search over the devices
 
     # METER - PV - Generation
     devices = eon.search_device_by_attribute(attributes={
@@ -215,7 +223,7 @@ for eon_name in iecon_scada.entities_eon.keys():
 
     if len(devices) == 0:
         sim.logWarning("  This house doesn't have a GENERATION entity, house is skipped from demkit!")
-        continue    # Skipp this house
+        continue  # Skipp this house
     elif not len(devices) == 1:
         sim.logWarning("  There are more than one GENERATION entity, selecting first found! - " + str(devices))
 
@@ -270,7 +278,6 @@ for eon_name in iecon_scada.entities_eon.keys():
     loadctrl.strictComfort = not useIslanding
     loadctrl.islanding = useIslanding
 
-
     # --- PV ---- Solar panel based on provided data
     sun = None
     pv = IeconPvDev(host=sim,
@@ -290,16 +297,6 @@ for eon_name in iecon_scada.entities_eon.keys():
 
 # The last thing to do is starting the simulation!
 sim.startSimulation()
-
-
-
-
-
-
-
-
-
-
 
 ## OTHER STUFF FOR REFERENCE
 

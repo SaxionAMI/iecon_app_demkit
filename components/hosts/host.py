@@ -28,6 +28,7 @@ from util.serverCsvReader import ServerCsvReader
 
 class Host(Core):
 	def __init__(self, name="host"):
+
 		# Type of simulation
 		Core.__init__(self, name)
 
@@ -106,15 +107,17 @@ class Host(Core):
 
 
 	def startSimulation(self):
+
 		self.currentTime = self.startTime
 		self.previousTime = self.startTime
 
-		#inject a seed:
+		# inject a seed:
 		random.seed(self.randomSeed)
 
 		self.startup()
 
 	def startup(self):
+
 		self.currentTime = self.startTime
 		self.previousTime = self.startTime
 
@@ -126,14 +129,17 @@ class Host(Core):
 
 			self.restoreStates()
 
-		self.logMsg("Starting")
+		self.logMsg("--- Starting")
 		self.db.createDatabase()
 
 		for e in self.entities:
+			self.logDebug("  Starting - " + str(e))
 			e.startup()
 
 	def shutdown(self):
-		self.logMsg("Shutting down")
+
+		self.logMsg("--- Shutting down")
+
 		for e in self.entities:
 			e.shutdown()
 

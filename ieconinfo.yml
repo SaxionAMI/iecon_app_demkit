@@ -15,3 +15,7 @@ type: "docker"
 
 # Application scope ( backend, device, application )
 scope: "application"
+
+# Allow module multiple instances of this module
+multi-instance: true
+
