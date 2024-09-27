@@ -28,7 +28,7 @@ class Entity:
 			self.host.addEntity(self)
 
 			# Persistent data storage for recovery on a crash in demo sites
-			if self.host.enablePersistence:
+			if self.host.enable_persistence:
 				self.persistence = Persistence(self, self.host)
 
 		self.type = "entity"

@@ -29,6 +29,6 @@ sim.extendedLogging = extendedLogging
 sim.logDevices = logDevices
 sim.logControllers = True 	# NOTE: Controllers do not log so much, keep this on True (default)!
 sim.logFlow = False
-sim.enablePersistence = enablePersistence
+sim.enable_persistence = enablePersistence
 if clearDB:
 	sim.clearDatabase() 	# Removes and creates a database
