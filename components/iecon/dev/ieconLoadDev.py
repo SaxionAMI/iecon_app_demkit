@@ -36,8 +36,10 @@ class IeconLoadDev(LoadDev):
         self.updateInterval = 1  # Update every minute
 
         # InfluxDB extra measurement tags
-        self.infuxTags = {"spb_eon": iecon_eon_name,
-                          "spb_eond": iecon_eond_name}
+        self.infuxTagsExtraLog = {
+            "spb_eon": iecon_eon_name,
+            "spb_eond": iecon_eond_name
+        }
 
         self._data = dict()     # Local storage of device data
 

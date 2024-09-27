@@ -133,7 +133,7 @@ class Host(Core):
 		self.db.createDatabase()
 
 		for e in self.entities:
-			self.logDebug("  Starting - " + str(e))
+			self.logDebug("  Starting - " + str(e.name))
 			e.startup()
 
 	def shutdown(self):

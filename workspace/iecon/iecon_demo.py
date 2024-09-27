@@ -76,10 +76,10 @@ timeZoneStr = 'Europe/Amsterdam'  # This is not a pytz object for Astral!
 logDevices = True
 
 # Restore data on restart (for demo purposes)
-enable_persistence = True
+enablePersistence = True
 
 # Disable all controllers, just monitoring devices
-controllers_enabled = False
+controllersEnabled = False
 
 # Enable control:
 # NOTE: AT MOST ONE OF THESE MAY BE TRUE! They can all be False, however
@@ -134,11 +134,11 @@ sim.longitude = longitude
 sim.logDevices = logDevices
 sim.logControllers = True  # NOTE: Controllers do not log so much, keep this on True (default)!
 sim.logFlow = False
-sim.enablePersistence = enable_persistence
+sim.enablePersistence = enablePersistence
 sim.extendedLogging = False
 sim.enableDebug = IECON_DEBUG_EN
 
-if not controllers_enabled:
+if not controllersEnabled:
     sim.logWarning("DEMKIT controllers disabled !")
 
 # Not needed stuff for now, but kept as reference
@@ -147,7 +147,7 @@ if not controllers_enabled:
 # weather = OpenWeatherEnv("Weather", sim)
 # weather.apiKey = demCfg.get("openweather_api_key", "")
 
-if controllers_enabled:
+if controllersEnabled:
     sun = SolcastSunEnv("Sun", sim)
     sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
 
@@ -233,7 +233,7 @@ for eon_name in iecon_scada.entities_eon.keys():
     # ---- DEMKIT Registration of entities -----------------------------------------------------------------------
 
     # -------- HEMS Controller
-    if controllers_enabled:
+    if controllersEnabled:
 
         if useCongestionPoints:
             cp = CongestionPoint()
@@ -262,7 +262,7 @@ for eon_name in iecon_scada.entities_eon.keys():
     # ------ HOUSE Consumption
 
     sm = MeterDev(name="housesm-" + eon_name, host=sim)
-    sm.infuxTags["eon"] = eon_name  # Set the EoN value
+    sm.infuxTagsExtraLog["eon"] = eon_name  # Set the EoN value
 
     # --- CONSUMPTION ---- Load model of this house
     load = IeconLoadDev(host=sim,
@@ -275,7 +275,7 @@ for eon_name in iecon_scada.entities_eon.keys():
     load.strictComfort = not useIslanding
     sm.addDevice(load)
 
-    if controllers_enabled:
+    if controllersEnabled:
         loadctrl = LoadCtrl(
             name="loadCtrl-" + load.eond_name,
             dev=load,
@@ -299,7 +299,7 @@ for eon_name in iecon_scada.entities_eon.keys():
     pv.strictComfort = not useIslanding
     sm.addDevice(pv)
 
-    if controllers_enabled:
+    if controllersEnabled:
         pvpc = LivePvCtrl("pvCtrl-" + pv.eond_name, pv, ctrl, sun, sim)
         pvpc.useEventControl = useEC
         pvpc.perfectPredictions = usePP

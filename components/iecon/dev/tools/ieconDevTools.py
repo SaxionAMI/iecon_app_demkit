@@ -1,4 +1,27 @@
+from iecon.dev.mqtt_spb_wrapper import MqttSpbEntityScada
 
+def iecon_find_eond ( eon : MqttSpbEntityScada.EntityScadaEdgeNode, eond_attributes:dict) -> str:
+    """
+    Search for a EoND Device within an EoN entity
+
+    Args:
+        eon: EoN entity
+        eond_attributes:    Search attributes
+
+    Returns: EoND entity or None if not found.
+    """
+
+    devices = eon.search_device_by_attribute(attributes=eond_attributes)
+
+    entity = None
+    if len(devices) == 0:
+        return entity
+    elif len(devices) == 1:
+        entity = devices[0]
+    elif len(devices) > 1:      # NOTE If more entities are found, we select the first one
+        entity = devices[0]
+
+    return entity
 
 def iecon_parse_spb_data_2_demkit(spb_data:dict) -> dict:
     """

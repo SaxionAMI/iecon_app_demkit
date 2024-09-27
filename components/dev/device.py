@@ -52,6 +52,7 @@ class Device(Entity):
 		# Persistence
 		self.watchlist = ["consumption", "plan"]
 		self.infuxTags = None
+		self.infuxTagsExtraLog = None	# Optional tags written during logging
 
 	def setPlan(self,  plan):
 		self.lockPlanning.acquire()
@@ -127,15 +128,21 @@ class Device(Entity):
 		# If there is no tags, initialize emtpy
 		if self.infuxTags is None:
 			self.infuxTags = {}
+
+		tags_str = ""
 		self.infuxTags.update({'devtype': self.devtype, 'name': self.name})		# Always override this values
 
 		# Serialize the tags string
-		tags_str = ""
 		for k, v in self.infuxTags.items():
 			tags_str += ",%s=%s" % (k, v)
-		tags_str = tags_str.replace(" ", "_")    # remove spaces, problematic for influxdb
+
+		# Serialize extra tags
+		if self.infuxTagsExtraLog and isinstance(self.infuxTagsExtraLog, dict):
+			for k, v in self.infuxTagsExtraLog.items():
+				tags_str += ",%s=%s" % (k, v)
 
 		# Get Influx Data point
+		tags_str = tags_str.replace(" ", "_")  # Tags - remove spaces, problematic for influxdb
 		data = self.type + tags_str + " " + measurement + "=" + str(value)
 
 		# print("INFLUX DATA - " + data)

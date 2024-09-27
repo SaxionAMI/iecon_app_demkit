@@ -62,6 +62,7 @@ class SolcastSunEnv(SunEnv):
 		# https://pvlib-python.readthedocs.io/en/latest/forecasts.html
 
 	def preTick(self, time, deltatime=0):
+
 		# Retrieve data from Solcast
 		if not self.retrieving and (self.host.time() - self.lastUpdate) > self.updateInterval:
 			self.retrieving = True
@@ -82,6 +83,9 @@ class SolcastSunEnv(SunEnv):
 		self.currentState = dict(result)
 
 	def getIrradiation(self, time):
+
+		self.host.logDebug("[SolcastSunEnv].getIrradiation() " + datetime.fromtimestamp(time).isoformat())
+
 		return dict(self.radiationSolcast(time))
 
 
@@ -204,6 +208,7 @@ class SolcastSunEnv(SunEnv):
 	def initializeReaders(self):
 		if self.reader is None:
 			self.reader = InfluxDBReader(self.host.db.prefix + self.type, timeBase=self.timeBase, host=self.host,  database=self.host.db.database, tags={"name": self.name}, value=self.varMapping["elevation"])
+			self.host.logDebug("[SolcastSunEnv].initializeReaders() - ")
 
 	def readValue(self, time, filename=None, timeBase=None, field=None):
 		if field != None:
@@ -213,6 +218,9 @@ class SolcastSunEnv(SunEnv):
 		return r
 
 	def readValues(self, startTime, endTime, filename="elevation", timeBase=None, field=None):
+
+		print("ASDFASDFASDFAD")
+
 		if field != None:
 			filename = field
 

@@ -1,4 +1,5 @@
 # Copyright 2023 University of Twente
+import time
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,6 +47,8 @@ class InfluxDBReader(Reader):
 		else:
 			self.database = database
 
+		self.token = demCfg["db"]["influx"].get("token")  # If using InfluxDB 2x, we need token access
+
 		self.user = ""
 		self.password = ""
 		self.prefix = ""
@@ -57,6 +60,13 @@ class InfluxDBReader(Reader):
 		self.value = value
 		self.tags = tags
 
+		# self.host.logDebug(
+		# 	"[influxDbReader].init() - " + self.database
+		# 	+ " - " + self.measurement
+		# 	+ " - " + self.aggregation
+		# 	+ " - " + self.value
+		# 	+ " - " + str(self.tags)
+		# )
 
 	def retrieveValues(self, startTime, endTime=None, value=None, tags=None):
 		if endTime is None:
@@ -76,22 +86,34 @@ class InfluxDBReader(Reader):
 			startTime) + '000000000 AND time < ' + str(endTime) + '000000000 GROUP BY time(' + str(
 			self.timeBase) + 's) fill(previous) ORDER BY time ASC'  # LIMIT '+str(l)
 
+		self.host.logDebug("[influxdbReader].retrieveValues() - %s" % str(query))
+
 		r = self.getData(query, startTime, endTime)
 
 		return r
 
 	def getData(self, query, startTime, endTime):
+
 		url = self.address + ":" + str(self.port) + "/query"
+
+		if not url.startswith("http"):
+			url = "http://" + url
 
 		payload = {}
 		payload['db'] = self.database
-		payload['u'] = self.user
-		payload['p'] = self.password
 		payload['q'] = query
+		if not self.token:
+			payload['u'] = self.user
+			payload['p'] = self.password
 
+		headers = None
+		if self.token:
+			headers = {
+				'Authorization': f'Token {self.token}',
+			}
 
-		r = requests.get(url, params=payload)
-		
+		r = requests.post(url, params=payload, headers=headers)
+
 		if self.raw:
 			return r.json()
 		else:
@@ -103,7 +125,8 @@ class InfluxDBReader(Reader):
 					for value in d:
 						result[idx] = value[1]
 						idx += 1
-			except:
+			except Exception as e:
+				self.host.logDebug("[influxdbReader].getData() exception - " + str(e))
 				pass
 
 			return result

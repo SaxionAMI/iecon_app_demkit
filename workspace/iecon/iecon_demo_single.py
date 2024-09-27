@@ -18,6 +18,7 @@ import random
 from datetime import datetime
 from pytz import timezone
 from pprint import pprint
+from iecon.dev.tools.ieconDevTools import iecon_find_eond
 
 ### MODULES ###
 # Import the modules that you require for the model
@@ -81,7 +82,7 @@ logDevices = True
 enablePersistence = True
 
 # Disable all controllers, just monitoring devices
-controllers_enabled = False
+controllers_enabled = True
 
 # Enable control:
 # NOTE: AT MOST ONE OF THESE MAY BE TRUE! They can all be False, however
@@ -91,7 +92,7 @@ usePlAuc = False  # Use a planned auction instead (Profile steering planning, au
 # NOTE useMC must be False!
 
 # Specific options for control
-useCongestionPoints = False  # Use congestionpoints
+useCongestionPoints = False  # Use congestion points
 useMultipleCommits = False  # Commit multiple profiles at once in profile steering
 useChildPruning = False  # Remoce children after each iteration that haven't provided substantial imporvement
 useIslanding = False  # Use islanding mode, only works with auction based control at the moment
@@ -100,7 +101,7 @@ ctrlTimeBase = 900  # Timebase for controllers
 useEC = True  # Use Event-based control
 usePP = False  # Use perfect predictions (a.k.a no predictions)
 useQ = False  # Perform reactive ELECTRICITY optimization
-useMC = False  # Use three phases and multicommodity control
+useMC = False  # Use three phases and multi-commodity control
 clearDB = False  # Clear the database or not. NOTE If disabled, ensure that the database exists!!!
 # Note either EC or PP should be enabled
 
@@ -108,8 +109,8 @@ clearDB = False  # Clear the database or not. NOTE If disabled, ensure that the 
 # ---------------------------------------------------------------------------------------------------------------------
 
 if useMC:
-    assert (useAuction == False)
-    assert (usePlAuc == False)
+    assert (useAuction is False)
+    assert (usePlAuc is False)
 
 # MODEL CREATION
 # Now it is time to create the complete model using the loaded modules
@@ -149,14 +150,16 @@ if not controllers_enabled:
 # weather = OpenWeatherEnv("Weather", sim)
 # weather.apiKey = demCfg.get("openweather_api_key", "")
 
-# sun = SolcastSunEnv("Sun", sim)
-# sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
+sun = None
+if controllers_enabled:
+    sun = SolcastSunEnv("Sun", sim)
+    sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
 
 # --- IECON ---  Create the SCADA object to handle device discovery, data updates and send commands
 iecon_scada = MqttSpbEntityScada(
     spb_domain_name=SPB_DOMAIN_ID,
     spb_scada_name="demkit-ems",
-    debug_info=IECON_DEBUG_EN,
+    debug_info=False, # IECON_DEBUG_EN,
 )
 
 # Connect to the MQTT spB broker
@@ -186,10 +189,11 @@ sim.logMsg("IECON SCADA object initialized, detected %d edge entities in the dom
 
 # scada.publish_birth()  # (Commented so the scada is not published in spb - ghost app) Send birth message for the SCADA application
 
+# ADDING A HEMS - add a controller if necessary
+cp = None
+ctrl = None
 if controllers_enabled:
 
-    # ADDING A HEMS - add a controller if necessary
-    cp = None
     if useCongestionPoints:
         cp = CongestionPoint()
         cp.setUpperLimit('ELECTRICITY', 3 * 25 * 230)  # 3 phase 25A connection ELECTRICITY limits
@@ -219,45 +223,44 @@ if controllers_enabled:
 sim.logMsg("---- IECON SCADA automatic neighbourhood entity detection ----")
 
 eon_name = SPB_EON_HOUSE    # EoN ID name
+eon = iecon_scada.entities_eon[eon_name]  # Get the EoN object, to search over the devices
 
 sim.logMsg("- Searching EoN - " + eon_name)
 
-eon = iecon_scada.entities_eon[eon_name]  # Get the EoN object, to search over the devices
-
 # METER - PV - Generation
-devices = eon.search_device_by_attribute(attributes={
-    'CTYPEC': "generation",
-    "CTYPE": "electricity",
-})
+entity_generation = iecon_find_eond(
+    eon=eon,
+    eond_attributes={
+        'CTYPEC': "generation",
+        "CTYPE": "electricity",
+    },
+)
 
-entity_generation = None
-if len(devices) == 0:
+if entity_generation:
+    sim.logMsg("  Found GENERATION entity : " + entity_generation)
+    for attr in eon.entities_eond[entity_generation].attributes.get_dictionary():
+        sim.logMsg("      %s : %s" % (str(attr["name"]), str(attr["value"])))
+else:
     sim.logWarning("  This house doesn't have a GENERATION entity, house is skipped from demkit!")
-elif len(devices) == 1:
-    entity_generation = devices[0]
-    sim.logMsg("  Found GENERATION entity : " + entity_generation)
-elif len(devices) > 1:
-    sim.logWarning("  There are more than one GENERATION entity, selecting first found! - " + str(devices))
-    entity_generation = devices[0]
-    sim.logMsg("  Found GENERATION entity : " + entity_generation)
 
 # METER - HOUSE LOAD - Consumption
-devices = eon.search_device_by_attribute(attributes={
-    'CTYPEC': "consumption",
-    "CTYPE": "electricity",
-    "ETYPE": "powermeter",
-})
 
-entity_consumption = None
-if len(devices) == 0:
-    sim.logWarning("  This house doesn't have a GENERATION entity, house is skipped from demkit!")
-elif len(devices) == 1:
-    entity_consumption = devices[0]
-    sim.logMsg("  Found CONSUMPTION entity: " + entity_consumption)
-elif len(devices) > 1:
-    sim.logWarning("  There are more than one GENERATION entity, selecting first found! - " + str(devices))
-    entity_consumption = devices[0]
-    sim.logMsg("  Found CONSUMPTION entity: " + entity_consumption)
+entity_consumption = iecon_find_eond(
+    eon=eon,
+    eond_attributes={
+        'CTYPEC': "consumption",
+        "CTYPE": "electricity",
+        "ETYPE": "powermeter",
+    },
+)
+
+if entity_consumption:
+    sim.logMsg("  Found CONSUMPTION entity : " + entity_consumption)
+    for attr in eon.entities_eond[entity_consumption].attributes.get_dictionary():
+        sim.logMsg("      %s : %s" % (str(attr["name"]), str(attr["value"])))
+else:
+    sim.logWarning("  This house doesn't have a CONSUMPTION entity, house is skipped from demkit!")
+
 
 # ---- DEMKIT Registration of entities ------------------------------------
 
@@ -265,15 +268,17 @@ elif len(devices) > 1:
 if entity_consumption:
 
     sm = MeterDev(name="house-" + eon_name, host=sim)
-    sm.infuxTags["eon"] = eon_name  # Set the EoN value
+    sm.infuxTagsExtraLog["eon"] = eon_name  # Set the EoN value
 
     # --- CONSUMPTION ---- Load model of this house
-    load = IeconLoadDev(host=sim,
-                        iecon_scada=iecon_scada,
-                        iecon_eon_name=eon_name,
-                        iecon_eond_name=entity_consumption,
-                        influx=True,
-                        )
+    load = IeconLoadDev(
+        host=sim,
+        iecon_scada=iecon_scada,
+        iecon_eon_name=eon_name,
+        iecon_eond_name=entity_consumption,
+        influx=True,
+    )
+    # load = HassLoadDev(name="hassLoadDev", host=sim, influx=True)
     load.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
     load.strictComfort = not useIslanding
     sm.addDevice(load)
@@ -281,7 +286,7 @@ if entity_consumption:
     if controllers_enabled:
 
         loadctrl = LoadCtrl(
-            name="loadCtrl-" + load.eond_name,
+            name="loadCtrl-" + load.name,
             dev=load,
             ctrl=ctrl,
             host=sim
@@ -295,7 +300,6 @@ if entity_consumption:
 # --- PV ---- Solar panel based on provided data
 if entity_generation:
 
-    sun = None
     pv = IeconPvDev(host=sim,
                     iecon_scada=iecon_scada,
                     iecon_eon_name=eon_name,

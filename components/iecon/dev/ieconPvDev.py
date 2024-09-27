@@ -36,8 +36,10 @@ class IeconPvDev(CurtDev):
         self.retrieving = False
 
         # InfluxDB extra measurement tags
-        self.infuxTags = {"spb_eon": iecon_eon_name,
-                          "spb_eond": iecon_eond_name}
+        self.infuxTagsExtraLog = {
+            "spb_eon": iecon_eon_name,
+            "spb_eond": iecon_eond_name
+        }
 
         # IECON Subscribe to the device data
         self.device = self._scada.get_edge_node_device(eon_name=self.eon_name,

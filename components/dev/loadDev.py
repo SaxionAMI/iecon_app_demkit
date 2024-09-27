@@ -51,14 +51,30 @@ class LoadDev(Device):
 		self.lockState.acquire()
 		if self.reader == None:
 			if self.influx:
-				self.reader = InfluxDBReader(self.host.db.prefix+self.type, timeBase=self.timeBase, host=self.host, database=self.host.db.database, value = "W-power.real.c."+self.commodities[0])
-				self.readerReactive = InfluxDBReader(self.host.db.prefix+self.type, timeBase=self.timeBase, host=self.host, database=self.host.db.database, value="W-power.imag.c." + self.commodities[0])
 				if self.infuxTags is None:
-					self.reader.tags = {"name": self.name}
-					self.readerReactive.tags = {"name": self.name}
+					_tags = {"name": self.name}
+					_tags_reactive = {"name": self.name}
 				else:
-					self.reader.tags = self.infuxTags
-					self.readerReactive.tags = self.infuxTags
+					_tags = self.infuxTags
+					_tags_reactive = self.infuxTags
+
+				self.reader = InfluxDBReader(
+					self.host.db.prefix+self.type,
+					timeBase=self.timeBase,
+					host=self.host,
+					database=self.host.db.database,
+					value = "W-power.real.c."+self.commodities[0],
+					tags=_tags,
+				)
+				self.readerReactive = InfluxDBReader(
+					self.host.db.prefix+self.type,
+					timeBase=self.timeBase,
+					host=self.host,
+					database=self.host.db.database,
+					value="W-power.imag.c." + self.commodities[0],
+					tags=_tags_reactive,
+				)
+
 			elif self.filename is not None:
 				self.reader = ClientCsvReader(dataSource=self.filename, timeBase=self.timeBase, column=self.column, timeOffset=self.timeOffset, host=self.host)
 				if self.filenameReactive is not None and self.readerReactive is None:
