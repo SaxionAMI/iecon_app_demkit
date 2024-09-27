@@ -60,13 +60,13 @@ class InfluxDBReader(Reader):
 		self.value = value
 		self.tags = tags
 
-		# self.host.logDebug(
-		# 	"[influxDbReader].init() - " + self.database
-		# 	+ " - " + self.measurement
-		# 	+ " - " + self.aggregation
-		# 	+ " - " + self.value
-		# 	+ " - " + str(self.tags)
-		# )
+		self.host.logDebug(
+			"[influxDbReader].init() - " + self.database
+			+ " - " + self.measurement
+			+ " - " + self.aggregation
+			+ " - " + self.value
+			+ " - " + str(self.tags)
+		)
 
 	def retrieveValues(self, startTime, endTime=None, value=None, tags=None):
 		if endTime is None:

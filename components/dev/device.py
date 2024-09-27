@@ -52,7 +52,7 @@ class Device(Entity):
 		# Persistence
 		self.watchlist = ["consumption", "plan"]
 		self.infuxTags = None
-		self.infuxTagsExtraLog = None	# Optional tags written during logging
+		self.infuxTagsExtraLog = {}	# Optional tags written during logging
 
 	def setPlan(self,  plan):
 		self.lockPlanning.acquire()
