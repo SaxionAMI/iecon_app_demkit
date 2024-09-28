@@ -49,6 +49,7 @@ from iecon.dev.ieconPvDev import IeconPvDev
 
 # Load Demkit Configuration
 from conf.usrconf import demCfg
+from iecon.dev.tools.ieconDevTools import iecon_eon_find_eond_by_attr
 
 SPB_DOMAIN_ID = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")
 IECON_DEBUG_EN = demCfg.get("IECON_DEBUG_EN", False)
@@ -76,10 +77,7 @@ timeZoneStr = 'Europe/Amsterdam'  # This is not a pytz object for Astral!
 logDevices = True
 
 # Restore data on restart (for demo purposes)
-enablePersistence = True
-
-# Disable all controllers, just monitoring devices
-controllersEnabled = False
+enablePersistence = False
 
 # Enable control:
 # NOTE: AT MOST ONE OF THESE MAY BE TRUE! They can all be False, however
@@ -138,24 +136,20 @@ sim.enablePersistence = enablePersistence
 sim.extendedLogging = False
 sim.enableDebug = IECON_DEBUG_EN
 
-if not controllersEnabled:
-    sim.logWarning("DEMKIT controllers disabled !")
-
 # Not needed stuff for now, but kept as reference
 
 # # Settings for Weather services
 # weather = OpenWeatherEnv("Weather", sim)
 # weather.apiKey = demCfg.get("openweather_api_key", "")
 
-if controllersEnabled:
-    sun = SolcastSunEnv("Sun", sim)
-    sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
+sun = SolcastSunEnv("Sun", sim)
+sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
 
 # --- IECON ---  Create the SCADA object to handle device discovery, data updates and send commands
 iecon_scada = MqttSpbEntityScada(
     spb_domain_name=SPB_DOMAIN_ID,
     spb_scada_name="demkit-ems",
-    debug_info=IECON_DEBUG_EN,
+    debug_info=False,  # IECON_DEBUG_EN,
 )
 
 # Connect to the MQTT spB broker
@@ -193,91 +187,81 @@ sim.logMsg("---- IECON SCADA automatic neighbourhood entity detection ----")
 
 for eon_name in iecon_scada.entities_eon.keys():
 
-    sim.logMsg("- Searching EoN - " + eon_name)
+    sim.logMsg("- Searching EoN <%s> for devices CONSUMPTION, GENERATION, ... " % eon_name)
 
     eon = iecon_scada.entities_eon[eon_name]  # Get the EoN object, to search over the devices
 
-    # METER - PV - Generation
-    devices = eon.search_device_by_attribute(attributes={
-        'CTYPEC': "generation",
-        "CTYPE": "electricity",
-    })
+    # Search for spB GENERATION entity
+    entity_generation = iecon_eon_find_eond_by_attr(
+        eon=eon,
+        eond_attributes={
+            'CTYPEC': "generation",
+            "CTYPE": "electricity",
+        },
+    )
 
-    if len(devices) == 0:
-        sim.logWarning("  This house doesn't have a GENERATION entity, house is skipped from demkit!")
-        continue  # Skipp this house
-    elif not len(devices) == 1:
-        sim.logWarning("  There are more than one GENERATION entity, selecting first found! - " + str(devices))
-
-    entity_generation = devices[0]
-
-    # METER - HOUSE LOAD - Consumption
-    devices = eon.search_device_by_attribute(attributes={
-        'CTYPEC': "consumption",
-        "CTYPE": "electricity",
-        "ETYPE": "powermeter",
-    })
-
-    if len(devices) == 0:
-        sim.logWarning("  This house doesn't have a GENERATION entity, house is skipped from demkit!")
-        continue  # Skipp this house
-    elif not len(devices) == 1:
-        sim.logWarning("  There are more than one GENERATION entity, selecting first found! - " + str(devices))
-
-    entity_consumption = devices[0]
-
-    # These are the entities found for CONSUMPTION and GENERATION
-    sim.logMsg("  Found generation entity : " + entity_generation)
-    sim.logMsg("  Found consumption entity: " + entity_consumption)
+    # Search for spB CONSUMPTION entity
+    entity_consumption = iecon_eon_find_eond_by_attr(
+        eon=eon,
+        eond_attributes={
+            'CTYPEC': "consumption",
+            "CTYPE": "electricity",
+            "ETYPE": "powermeter",
+        },
+    )
 
     # ---- DEMKIT Registration of entities -----------------------------------------------------------------------
 
     # -------- HEMS Controller
-    if controllersEnabled:
+    if useCongestionPoints:
+        cp = CongestionPoint()
+        cp.setUpperLimit('ELECTRICITY', 3 * 25 * 230)  # 3 phase 25A connection ELECTRICITY limits
+        cp.setLowerLimit('ELECTRICITY', -3 * 25 * 230)
 
-        if useCongestionPoints:
-            cp = CongestionPoint()
-            cp.setUpperLimit('ELECTRICITY', 3 * 25 * 230)  # 3 phase 25A connection ELECTRICITY limits
-            cp.setLowerLimit('ELECTRICITY', -3 * 25 * 230)
-
-        if useCongestionPoints:
-            ctrl = GroupCtrl("hems-"+eon_name, sim, None, cp)
+    if useCongestionPoints:
+        ctrl = GroupCtrl("hems-"+eon_name, sim, None, cp)
+    else:
+        ctrl = GroupCtrl("hems-"+eon_name, sim, None)  # params: name, simHost
+        ctrl.minImprovement = 0.01
+        if useMultipleCommits:
+            ctrl.maxIters = 4
         else:
-            ctrl = GroupCtrl("hems-"+eon_name, sim, None)  # params: name, simHost
-            ctrl.minImprovement = 0.01
-            if useMultipleCommits:
-                ctrl.maxIters = 4
-            else:
-                ctrl.maxIters = 8
-            ctrl.timeBase = ctrlTimeBase  # 900 is advised hre, must be a multiple of the simulation timeBase
-            ctrl.useEventControl = useEC  # Enable / disable event-based control
-            ctrl.isFleetController = True  # Very important to set this right in case of large structures. The root controller
-            # needs to be a fleetcontroller anyways. See 4.3 of Hoogsteen's thesis
-            ctrl.strictComfort = not useIslanding
-            ctrl.islanding = useIslanding
-            ctrl.planHorizon = 2 * int(24 * 3600 / ctrlTimeBase)
-            ctrl.planInterval = int(24 * 3600 / ctrlTimeBase)
-            ctrl.predefinedNextPlan = alignplan
+            ctrl.maxIters = 8
+        ctrl.timeBase = ctrlTimeBase  # 900 is advised hre, must be a multiple of the simulation timeBase
+        ctrl.useEventControl = useEC  # Enable / disable event-based control
+        ctrl.isFleetController = True  # Very important to set this right in case of large structures. The root controller
+        # needs to be a fleetcontroller anyways. See 4.3 of Hoogsteen's thesis
+        ctrl.strictComfort = not useIslanding
+        ctrl.islanding = useIslanding
+        ctrl.planHorizon = 2 * int(24 * 3600 / ctrlTimeBase)
+        ctrl.planInterval = int(24 * 3600 / ctrlTimeBase)
+        ctrl.predefinedNextPlan = alignplan
 
-    # ------ HOUSE Consumption
-
+    # --- HOUSE smart meter ( Supply )
     sm = MeterDev(name="housesm-" + eon_name, host=sim)
     sm.infuxTagsExtraLog["eon"] = eon_name  # Set the EoN value
 
     # --- CONSUMPTION ---- Load model of this house
-    load = IeconLoadDev(host=sim,
-                        iecon_scada=iecon_scada,
-                        iecon_eon_name=eon_name,
-                        iecon_eond_name=entity_consumption,
-                        influx=True,
-                        )
-    load.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
-    load.strictComfort = not useIslanding
-    sm.addDevice(load)
+    if entity_consumption:
 
-    if controllersEnabled:
+        sim.logMsg("    Found CONSUMPTION entity : " + entity_consumption)
+        # for attr in eon.entities_eond[entity_consumption].attributes.get_dictionary():
+        #     sim.logMsg("      %s : %s" % (str(attr["name"]), str(attr["value"])))
+
+        # Add device
+        load = IeconLoadDev(host=sim,
+                            iecon_scada=iecon_scada,
+                            iecon_eon_name=eon_name,
+                            iecon_eond_name=entity_consumption,
+                            influx=True,
+                            )
+        load.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
+        load.strictComfort = not useIslanding
+        sm.addDevice(load)
+
+        # Add controller
         loadctrl = LoadCtrl(
-            name="loadCtrl-" + load.eond_name,
+            name="loadctrl-" + load.eond_name,
             dev=load,
             ctrl=ctrl,
             host=sim
@@ -288,26 +272,44 @@ for eon_name in iecon_scada.entities_eon.keys():
         loadctrl.strictComfort = not useIslanding
         loadctrl.islanding = useIslanding
 
-    # --- PV GENERATION ---- Solar panel based on provided data
-    sun = None
-    pv = IeconPvDev(host=sim,
-                    iecon_scada=iecon_scada,
-                    iecon_eon_name=eon_name,
-                    iecon_eond_name=entity_generation,
-                    influx=True)
-    pv.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
-    pv.strictComfort = not useIslanding
-    sm.addDevice(pv)
+    else:
+        sim.logWarning("  This house doesn't have a CONSUMPTION entity")
 
-    if controllersEnabled:
-        pvpc = LivePvCtrl("pvCtrl-" + pv.eond_name, pv, ctrl, sun, sim)
+    # --- PV GENERATION ---- Solar panel based on provided data
+    if entity_generation:
+
+        # print some info messages
+        sim.logMsg("    Found GENERATION entity : " + entity_generation)
+        # for attr in eon.entities_eond[entity_generation].attributes.get_dictionary():
+        #     sim.logMsg("      %s : %s" % (str(attr["name"]), str(attr["value"])))
+
+        # Add device
+        pv = IeconPvDev(host=sim,
+                        iecon_scada=iecon_scada,
+                        iecon_eon_name=eon_name,
+                        iecon_eond_name=entity_generation,
+                        influx=True)
+        pv.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
+        pv.strictComfort = not useIslanding
+        sm.addDevice(pv)
+
+        # Add controller
+        pvpc = LivePvCtrl("pvctrl-" + pv.eond_name, pv, ctrl, sun, sim)
         pvpc.useEventControl = useEC
         pvpc.perfectPredictions = usePP
         pvpc.strictComfort = not useIslanding
         pvpc.islanding = useIslanding
 
+    else:
+        sim.logWarning("  This house doesn't have a GENERATION entity.")
+
+
 # The last thing to do is starting the simulation!
 sim.startSimulation()
+
+
+
+
 
 ## OTHER STUFF FOR REFERENCE
 

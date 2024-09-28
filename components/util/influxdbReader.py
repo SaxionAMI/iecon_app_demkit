@@ -1,5 +1,4 @@
 # Copyright 2023 University of Twente
-import time
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -60,13 +59,13 @@ class InfluxDBReader(Reader):
 		self.value = value
 		self.tags = tags
 
-		self.host.logDebug(
-			"[influxDbReader].init() - " + self.database
-			+ " - " + self.measurement
-			+ " - " + self.aggregation
-			+ " - " + self.value
-			+ " - " + str(self.tags)
-		)
+		# self.host.logDebug(
+		# 	"[influxDbReader].init() - " + self.database
+		# 	+ " - " + self.measurement
+		# 	+ " - " + self.aggregation
+		# 	+ " - " + self.value
+		# 	+ " - " + str(self.tags)
+		# )
 
 	def retrieveValues(self, startTime, endTime=None, value=None, tags=None):
 		if endTime is None:

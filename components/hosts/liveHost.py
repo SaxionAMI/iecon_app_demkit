@@ -47,7 +47,7 @@ class LiveHost(Host):
 		old = int(tm.time())
 		old = old - (old % self.timeBase)
 
-		self.logMsg("Simulation cycle " )
+		self.logMsg("Simulation loop")
 		while True:
 
 			now = int(tm.time())
@@ -66,13 +66,17 @@ class LiveHost(Host):
 		#do a soft shutdown
 		self.shutdown()
 			
-	def timeTick(self,  time, absolute = True):
+	def timeTick(self,  time, absolute=True):
+
 		self.executeCmdQueue()
+
 		Host.timeTick(self, time, absolute)
 
 		self.requestTickets(time)
+
 		while (len(self.tickets) > 0):
 			self.announceNextTicket(time)
 
 		self.storeStates()
+
 		self.postTickLogging(time, True)

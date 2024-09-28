@@ -54,7 +54,7 @@ class LoadCtrl(DevCtrl):
 
 		# Deviation logging
 		self.predictionDeviation = []
-		self.predictionDeviationWindow = 48 #samples
+		self.predictionDeviationWindow = 48 # samples
 		self.deviation = 0
 		self.deviationSamples = 0
 

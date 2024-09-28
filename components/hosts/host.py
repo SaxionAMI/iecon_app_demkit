@@ -28,7 +28,6 @@ from util.serverCsvReader import ServerCsvReader
 
 class Host(Core):
 	def __init__(self, name="host"):
-
 		# Type of simulation
 		Core.__init__(self, name)
 
@@ -107,17 +106,15 @@ class Host(Core):
 
 
 	def startSimulation(self):
-
 		self.currentTime = self.startTime
 		self.previousTime = self.startTime
 
-		# inject a seed:
+		#inject a seed:
 		random.seed(self.randomSeed)
 
 		self.startup()
 
 	def startup(self):
-
 		self.currentTime = self.startTime
 		self.previousTime = self.startTime
 

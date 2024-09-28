@@ -99,7 +99,8 @@ class OpenWeatherEnv(WeatherEnv):
 				self.retrieving = False
 				self.lockState.release()
 			except:
-				self.logWarning("OpenWeatherMap service error")
+				# self.logWarning("OpenWeatherMap service error")
+				pass
 
 		self.retrieving = False
 

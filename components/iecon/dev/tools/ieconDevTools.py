@@ -1,8 +1,8 @@
 from iecon.dev.mqtt_spb_wrapper import MqttSpbEntityScada
 
-def iecon_find_eond ( eon : MqttSpbEntityScada.EntityScadaEdgeNode, eond_attributes:dict) -> str:
+def iecon_eon_find_eond_by_attr (eon : MqttSpbEntityScada.EntityScadaEdgeNode, eond_attributes:dict) -> str:
     """
-    Search for a EoND Device within an EoN entity
+    Search for a EoND Device within an EoN entity for a given attributes
 
     Args:
         eon: EoN entity
@@ -111,8 +111,25 @@ def iecon_parse_spb_data_2_demkit(spb_data:dict) -> dict:
             pass
         elif name == "ENE_CNT_IMP_L3":
             pass
+
         elif name == "ENE_CNT_REAC_EXP":
             pass
+        elif name == "ENE_CNT_REAC_EXP_L1":
+            pass
+        elif name == "ENE_CNT_REAC_EXP_L2":
+            pass
+        elif name == "ENE_CNT_REAC_EXP_L3":
+            pass
+
+        elif name == "ENE_CNT_REAC_IMP":
+            pass
+        elif name == "ENE_CNT_REAC_IMP_L1":
+            pass
+        elif name == "ENE_CNT_REAC_IMP_L2":
+            pass
+        elif name == "ENE_CNT_REAC_IMP_L3":
+            pass
+
 
         elif name == "ENER_CNT_IMP":
             pass

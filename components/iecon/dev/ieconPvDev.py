@@ -97,7 +97,7 @@ class IeconPvDev(CurtDev):
             else:
                 # TODO - Any action if device is disconnected?
                 self.consumption['ELECTRICITY'] = complex(0.0, 0.0)
-                self.logWarning("%s - IECON EoND is offline, power set to zero! " % self.device.entity_name)
+                # self.logWarning("%s - IECON EoND is offline, power set to zero! " % self.device.entity_name)
 
         self.lockState.release()
         return
