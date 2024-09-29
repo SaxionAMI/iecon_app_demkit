@@ -47,14 +47,14 @@ class IeconPvDev(CurtDev):
                                                        )
 
         # Callback function registration
-        self.device.callback_data = self._spb_dev_data  # To display the data received ( Commented on deployment )
+        # self.device.callback_data = self._spb_dev_data  # To display the data received ( Commented on deployment )
 
         self._data = dict()     # Local storage of device data
 
         # If using IECON InfluxDB, use specific IECON InfluxDB readers
         if self.host.db.__class__.__name__ == "IeconInfluxDB":
-            self.reader = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name)
-            self.readerReactive = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name, field_name="POW_REAC")  # Reactive power (imaginary)
+            self.reader = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name, commodity="electricity")
+            self.readerReactive = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name, field_name="POW_REAC", commodity="electricity")  # Reactive power (imaginary)
 
     def _spb_dev_data(self, msg):
         """
@@ -93,6 +93,12 @@ class IeconPvDev(CurtDev):
                 # Get the data from the device
                 # NOTE: the value returned is the last one. You can check timestamp property to validate value.
                 value = float(self.device.data.get_value("POW"))
+                timestamp = int(self.device.data.get_value_timestamp("POW"))
+
+                # FIX - Some inverters may not send data if generation is zero, so if data is too old, force to zero.
+                # LOQIO logic - if data doesn't change, they don't send a data package.
+                if (self.host.time() - (timestamp/1000)) > 300:     # If more than 5 min no data, force power to zero.
+                    value = 0
 
                 # Update consumption
                 self.consumption['ELECTRICITY'] = complex(value, 0.0)

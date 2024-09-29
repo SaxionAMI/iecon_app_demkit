@@ -18,7 +18,6 @@ import random
 from datetime import datetime
 from pytz import timezone
 from pprint import pprint
-from iecon.dev.tools.ieconDevTools import iecon_eon_find_eond_by_attr
 
 ### MODULES ###
 # Import the modules that you require for the model
@@ -44,10 +43,12 @@ from ctrl.live.livePvCtrl import LivePvCtrl
 from ctrl.groupCtrl import GroupCtrl  # Group controller to control multiple devices, implements Profile Steering
 
 # IECON components
+from iecon.dev.tools.ieconDevTools import iecon_eon_find_eond_by_attr
 from iecon.dev.mqtt_spb_wrapper import MqttSpbEntityScada
 from iecon.dev.ieconLoadDev import IeconLoadDev
 from iecon.dev.ieconPvDev import IeconPvDev
-from iecon.database.ieconInfluxDB import IeconInfluxDB
+from iecon.database.ieconInfluxDB import IeconInfluxDB, IeconInfluxDBReader
+
 
 # Load Demkit Configuration
 from conf.usrconf import demCfg
@@ -149,10 +150,16 @@ sim.enableDebug = IECON_DEBUG_EN
 # weather = OpenWeatherEnv("Weather", sim)
 # weather.apiKey = demCfg.get("openweather_api_key", "")
 
+
 # Settings for Sun services
 sun = SolcastSunEnv("sun-"+sim.db.database, sim)
 sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
-# TODO if IeconInfluxDB used, update influxDB readers for sun to use IECON ones.
+
+# FIX for IECON specific InfluxDBReader, only if DB is IeconInfluxDB class.
+# SUN data is located under EoN=db.eon_name, EoND=Sun.name
+if sim.db.__class__.__name__ == "IeconInfluxDB":
+    sun.reader = IeconInfluxDBReader(host=sim, eon_name=sim.db.eon_name, eond_name=sun.name, field_name="GHI")
+
 
 # --- IECON ---  Create the SCADA object to handle device discovery, data updates and send commands
 iecon_scada = MqttSpbEntityScada(

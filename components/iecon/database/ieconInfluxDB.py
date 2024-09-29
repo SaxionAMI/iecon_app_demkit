@@ -79,15 +79,15 @@ class IeconInfluxDB(InfluxDB):
             time = str(tm.time())
             timestr = time.replace('.', '')
             timestr += "000"
-        dataToBeAdded = "%s%s %s" % (self.prefix, data, timestr)
+        db_data_line = "%s%s %s" % (self.prefix, data, timestr)
 
         # self.host.logDebug("[InfluxDB.appendValuePrepared] " + dataToBeAdded)
 
         # -- IECON influxdb data format Conversion ----------------------------------------------
-        dataToBeAdded = self._db_demkit_data_2_iecon(dataToBeAdded)     # convert data
-        # self.host.logDebug("    " + dataToBeAdded)
+        db_data_line = self._db_demkit_data_2_iecon(db_data_line)     # convert data
+        # self.host.logDebug("[InfluxDB.appendValuePrepared] " + db_data_line)
 
-        self.data.append(dataToBeAdded)
+        self.data.append(db_data_line)
 
     def _db_demkit_data_2_iecon(self, data_line: str) -> str:
         """
@@ -151,9 +151,9 @@ class IeconInfluxDB(InfluxDB):
                 field_name = field_name.replace("W-power.real", "POW")
                 field_name = field_name.replace("W-power.imag", "POW_REAC")
                 field_name = field_name.replace("Wh-energy.imag", "ENE")
-                field_name = field_name.replace("Wm2-irradiation.GHI", "GHI")
-                field_name = field_name.replace("Wm2-irradiation.DNI", "DNI")
-                field_name = field_name.replace("Wm2-irradiation.DHI", "DHI")
+                # field_name = field_name.replace("Wm2-irradiation.GHI", "GHI")  # for now use the original ones, otherwise we need to modify original code
+                # field_name = field_name.replace("Wm2-irradiation.DNI", "DNI")
+                # field_name = field_name.replace("Wm2-irradiation.DHI", "DHI")
 
             # ENAME - Entity name from "name"
             tags["ENAME"] = tags["name"]
@@ -187,7 +187,7 @@ class IeconInfluxDBReader(Reader):
             eon_name: str,
             eond_name: str,
             field_name="POW",
-            commodity="electricity",
+            commodity=None,
             aggregation="mean",
             offset=None,
             raw=False,
@@ -243,8 +243,9 @@ class IeconInfluxDBReader(Reader):
             field_name = self.field_name
 
         # Condition query
-        condition = ' (\"ENAME\" = \'' + self.eond_name + '\') AND ' \
-                    + '(\"CTYPE\" = \'' + self.eond_commodity + '\') AND '
+        condition = ' (\"ENAME\" = \'' + self.eond_name + '\') AND '
+        if self.eond_commodity:
+            condition += '(\"CTYPE\" = \'' + self.eond_commodity + '\') AND '
 
         query = 'SELECT ' + self.aggregation + '(\"' + field_name + '\") FROM \"' + self.eon_name + '\"' \
                 + ' WHERE ' + condition \

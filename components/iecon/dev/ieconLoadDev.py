@@ -55,8 +55,8 @@ class IeconLoadDev(LoadDev):
 
         # If using IECON InfluxDB, use specific IECON InfluxDB readers
         if self.host.db.__class__.__name__ == "IeconInfluxDB":
-            self.reader = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name)
-            self.readerReactive = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name, field_name="POW_REAC")  # Reactive power (imaginary)
+            self.reader = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name, commodity="electricity")
+            self.readerReactive = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name, field_name="POW_REAC", commodity="electricity")  # Reactive power (imaginary)
 
 
     # IECON Device DATA callback - Real time data messages from the device

@@ -310,6 +310,13 @@ class SpbEntity:
                         return item.value
             return None
 
+        def get_value_timestamp(self, field_name):
+            if len(self.values) > 0:
+                for item in self.values:
+                    if item.name == field_name:
+                        return item.timestamp
+            return None
+
         def is_empty(self):
             if not self.values:
                 return True
