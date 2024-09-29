@@ -47,6 +47,7 @@ from ctrl.groupCtrl import GroupCtrl  # Group controller to control multiple dev
 from iecon.dev.mqtt_spb_wrapper import MqttSpbEntityScada
 from iecon.dev.ieconLoadDev import IeconLoadDev
 from iecon.dev.ieconPvDev import IeconPvDev
+from iecon.database.ieconInfluxDB import IeconInfluxDB
 
 # Load Demkit Configuration
 from conf.usrconf import demCfg
@@ -120,7 +121,11 @@ random.seed(1337)
 
 # ---- HERE STARTS THE REAL MODEL DEFINITION OF THE HOUSE TO BE SIMULATED ----
 # First we need to instantiate the Host environment:
-sim = LiveHost()
+sim = LiveHost(name="host-"+SPB_DOMAIN_ID)
+
+# # Use the IECON InfluxDB - data will be inserted as part of the spB domain. ( comment to use Demkit one )
+# # New EoN emsDemkit-DOMAIN is created and all demkit simulation data will be contained inside this EoN
+# sim.db = IeconInfluxDB(host=sim)
 
 sim.startTime = startTime
 sim.timeBase = 10
@@ -140,13 +145,14 @@ sim.enableDebug = IECON_DEBUG_EN
 
 # Not needed stuff for now, but kept as reference
 
-# Settings for Weather services
-weather = OpenWeatherEnv("Weather", sim)
-weather.apiKey = demCfg.get("openweather_api_key", "")
+# # Settings for Weather services
+# weather = OpenWeatherEnv("Weather", sim)
+# weather.apiKey = demCfg.get("openweather_api_key", "")
 
 # Settings for Sun services
-sun = SolcastSunEnv("Sun", sim)
+sun = SolcastSunEnv("sun-"+sim.db.database, sim)
 sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
+# TODO if IeconInfluxDB used, update influxDB readers for sun to use IECON ones.
 
 # --- IECON ---  Create the SCADA object to handle device discovery, data updates and send commands
 iecon_scada = MqttSpbEntityScada(
@@ -255,8 +261,8 @@ if entity_consumption:
     load = IeconLoadDev(
         host=sim,
         iecon_scada=iecon_scada,
-        iecon_eon_name=eon_name,
-        iecon_eond_name=entity_consumption,
+        eon_name=eon_name,
+        eond_name=entity_consumption,
         influx=True,
     )
     # load = HassLoadDev(name="hassLoadDev", host=sim, influx=True)
@@ -290,8 +296,8 @@ if entity_generation:
 
     pv = IeconPvDev(host=sim,
                     iecon_scada=iecon_scada,
-                    iecon_eon_name=eon_name,
-                    iecon_eond_name=entity_generation,
+                    eon_name=eon_name,
+                    eond_name=entity_generation,
                     influx=True)
     pv.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
     pv.strictComfort = not useIslanding

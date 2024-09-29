@@ -16,20 +16,23 @@ from dev.loadDev import LoadDev
 
 from iecon.dev.mqtt_spb_wrapper.mqtt_spb_entity_scada import MqttSpbEntityScada
 from iecon.dev.tools.ieconDevTools import iecon_parse_spb_data_2_demkit
+from iecon.database.ieconInfluxDB import IeconInfluxDBReader
 
 
 class IeconLoadDev(LoadDev):
 
     def __init__(self, host,
-                 iecon_scada: MqttSpbEntityScada, iecon_eon_name: str, iecon_eond_name : str,
-                 influx=False, reader=None,
+                 iecon_scada: MqttSpbEntityScada, eon_name: str, eond_name : str,
+                 influx=False,
                  ):
-        LoadDev.__init__(self, iecon_eond_name, host, influx, reader)
+
+        # Initialize parent class
+        LoadDev.__init__(self, eond_name, host, influx)
 
         # Save parameters locally
         self._scada = iecon_scada
-        self.eon_name = iecon_eon_name
-        self.eond_name = iecon_eond_name
+        self.eon_name = eon_name
+        self.eond_name = eond_name
 
         # Update rate:
         self.lastUpdate = -1
@@ -37,8 +40,8 @@ class IeconLoadDev(LoadDev):
 
         # InfluxDB extra measurement tags
         self.infuxTagsExtraLog = {
-            "spb_eon": iecon_eon_name,
-            "spb_eond": iecon_eond_name
+            "spb_eon": eon_name,
+            "spb_eond": eond_name
         }
 
         self._data = dict()     # Local storage of device data
@@ -49,6 +52,12 @@ class IeconLoadDev(LoadDev):
                                                        )
         # To display the data received ( for DEBUG -  Commented on deployment )
         self.device.callback_data = self._spb_dev_data
+
+        # If using IECON InfluxDB, use specific IECON InfluxDB readers
+        if self.host.db.__class__.__name__ == "IeconInfluxDB":
+            self.reader = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name)
+            self.readerReactive = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name, field_name="POW_REAC")  # Reactive power (imaginary)
+
 
     # IECON Device DATA callback - Real time data messages from the device
     def _spb_dev_data(self, msg: dict):
@@ -105,42 +114,6 @@ class IeconLoadDev(LoadDev):
     # This is your chance to log data
     def logStats(self, time):
 
-        # If there is no data to log, exit inmediately
-        if not self._data:
-            # print("No data")
-            return
-
-        self.lockState.acquire()
-
-        # ---- POWER VALUES ----
-        try:
-            for c in self.commodities:
-                self.logValue("W-power.real.c." + c, self.consumption[c].real)
-                if self.host.extendedLogging:
-                    self.logValue("W-power.imag.c." + c, self.consumption[c].imag)
-
-                if c in self.plan and len(self.plan[c]) > 0:
-                    self.logValue("W-power.plan.real.c." + c, self.plan[c][0][1].real)
-                    if self.host.extendedLogging:
-                        self.logValue("W-power.plan.imag.c." + c, self.plan[c][0][1].imag)
-        except:
-            pass
-
-        # ---- OTHER DATA - If enabled ----
-        if self.host.extendedLogging:
-            try:
-                # TODO at the moment it is enforced for commodity ELECTRICITY
-                for key in self._data:
-                    self.logValue(key + ".ELECTRICITY", self._data[key])
-
-                # for c in self.commodities:
-                #     for key in self._data:
-                #         self.logValue(key + "." + c, self._data[key])
-            except:
-                pass
-
-        # Reset data till next iteration, it will be updated automatically when device send data
-        self._data = {}
-
-        self.lockState.release()
-
+        # We don't need to store any extra data for this device
+        # RAW device data is being stored automatically by the IECON framework
+        return
