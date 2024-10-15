@@ -1,6 +1,7 @@
-from iecon.dev.mqtt_spb_wrapper import MqttSpbEntityScada
+from mqtt_spb_wrapper import MqttSpbEntityScada
 
-def iecon_eon_find_eond_by_attr (eon : MqttSpbEntityScada.EntityScadaEdgeNode, eond_attributes:dict) -> str:
+
+def iecon_eon_find_eond_by_attr (eon : MqttSpbEntityScada.EdgeEntity, eond_attributes:dict) -> str:
     """
     Search for a EoND Device within an EoN entity for a given attributes
 
@@ -11,8 +12,38 @@ def iecon_eon_find_eond_by_attr (eon : MqttSpbEntityScada.EntityScadaEdgeNode, e
     Returns: EoND entity or None if not found.
     """
 
-    devices = eon.search_device_by_attribute(attributes=eond_attributes)
+    # Missing method on spb wrapper 2.0.1 version, to be fixed in next versions
+    # devices = eon.search_device_by_attribute(attributes=eond_attributes)
 
+    devices = []  # List of devices found
+
+    # Iterate over the devices
+    for eond, device in eon.entities_eond.items():
+
+        is_found = True  # Flag to mark a detection
+
+        # Iterate over the attributes to be found
+        for k, v in eond_attributes.items():
+
+            # not found on previous iteration/attribute, then exit
+            if not is_found:
+                break
+
+            # Search for attribute name
+            if k not in device.attributes.get_names():
+                is_found = False
+                continue  # Not found
+
+            # Compare the attribute value
+            if not str(device.attributes.get_value(k)) == str(v):
+                is_found = False
+                continue
+
+        # If found a match, add the device
+        if is_found:
+            devices.append(eond)
+
+    # Select the device
     entity = None
     if len(devices) == 0:
         return entity

@@ -14,7 +14,7 @@
 
 from dev.loadDev import LoadDev
 
-from iecon.dev.mqtt_spb_wrapper.mqtt_spb_entity_scada import MqttSpbEntityScada
+from mqtt_spb_wrapper import MqttSpbEntityScada
 from iecon.dev.tools.ieconDevTools import iecon_parse_spb_data_2_demkit
 from iecon.database.ieconInfluxDB import IeconInfluxDBReader
 
@@ -47,9 +47,11 @@ class IeconLoadDev(LoadDev):
         self._data = dict()     # Local storage of device data
 
         # Subscribe to the device data
-        self.device = self._scada.get_edge_node_device(eon_name=self.eon_name,
-                                                       eond_name=self.eond_name,
-                                                       )
+        self.device = self._scada.get_edge_device(
+            eon_name=self.eon_name,
+            eond_name=self.eond_name,
+        )
+
         # To display the data received ( for DEBUG -  Commented on deployment )
         self.device.callback_data = self._spb_dev_data
 

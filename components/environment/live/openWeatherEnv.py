@@ -1,4 +1,5 @@
 # Copyright 2023 University of Twente
+import time
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -78,6 +79,7 @@ class OpenWeatherEnv(WeatherEnv):
 		if (self.host.time() - self.lastUpdate)  > self.updateInterval:
 			try:
 				url = "http://api.openweathermap.org/data/2.5/weather?lat="+str(self.latitude)+"&lon="+str(self.longitude)+"&units=metric&APPID="+self.apiKey
+				print(url)
 				r = requests.get(url)
 				if r.status_code != 200:
 					self.logWarning("Could not connect to OpenWeatherMap. Errorcode: "+str(r.status_code)+ "\t\t" + r.text)
@@ -111,6 +113,7 @@ class OpenWeatherEnv(WeatherEnv):
 		if self.lastPrediction < self.host.time():
 			try:
 				url = "http://api.openweathermap.org/data/2.5/forecast?lat="+str(self.latitude)+"&lon="+str(self.longitude)+"&units=metric&APPID="+self.apiKey
+				print(url)
 				r = requests.get(url)
 				if r.status_code != 200:
 					self.logWarning("Could not connect to OpenWeatherMap. Errorcode: "+str(r.status_code)+ "\t\t" + r.text)
@@ -197,3 +200,32 @@ class OpenWeatherEnv(WeatherEnv):
 
 		result = self.reader.readValues(startTime, endTime, self.varMapping[filename], timeBase)
 		return result
+
+
+if __name__ == "__main__":
+
+	from pprint import pprint
+
+	class HostTest:
+		def __init__(self):
+			self.latitude = 0
+			self.longitude = 0
+			self.enablePersistence = False
+			self.timeOffset = 0
+
+		def addEntity(self, entity):
+			pass
+
+		def time(self):
+			return int(time.time()*1000)
+
+	host = HostTest()
+
+	weather = OpenWeatherEnv(name="test", host=host)
+
+	weather.latitude = 52.330271
+	weather.longitude = 6.111991
+	weather.apiKey = "3878a1ba352d60c6e2d8d0cab5118e30"
+
+	print(weather.retrieveData())
+	print(weather.retrieveForecast())

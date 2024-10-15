@@ -54,7 +54,7 @@ class LoadCtrl(DevCtrl):
 
 		# Deviation logging
 		self.predictionDeviation = []
-		self.predictionDeviationWindow = 48 # samples
+		self.predictionDeviationWindow = 48  # samples
 		self.deviation = 0
 		self.deviationSamples = 0
 
@@ -92,14 +92,14 @@ class LoadCtrl(DevCtrl):
 			pass
 
 		try:
-			self.deviation +=  1 + ((value - planning)/planning)
+			self.deviation += 1 + ((value - planning)/planning)
 		except:
 			self.deviation += 1
 		self.deviationSamples += 1
 
 		if time % self.timeBase == 0:
 			# we are exactly at an interval
-			i = int( (time - (time%self.timeBase) ) / ((self.predictionDeviationWindow * self.timeBase) / self.predictionDeviationWindow) ) % self.predictionDeviationWindow
+			i = int( (time - (time%self.timeBase)) / ((self.predictionDeviationWindow * self.timeBase) / self.predictionDeviationWindow) ) % self.predictionDeviationWindow
 			if self.deviationSamples > 0:
 				self.predictionDeviation[i] = self.deviation / self.deviationSamples
 			else:
@@ -231,6 +231,9 @@ class LoadCtrl(DevCtrl):
 
 #### EVENT BASED PREDICTION UPDATE
 	def updatePrediction(self):
+
+		self.host.logDebug("[loadCtrl] updatePrediction")
+
 		self.updatingPrediction = True
 		if self.useEventControl and not self.perfectPredictions:
 
@@ -287,6 +290,7 @@ class LoadCtrl(DevCtrl):
 			return
 
 		else:
+			self.host.logDebug("[loadCtrl.initializePredictors] Initializing Window predictor")
 			self.predictor = WindowPredictor(self.timeBase)
 			time = self.host.time(self.timeBase) - (4*7*24*3600)
 			data = list(self.zCall(self.dev, 'readValues', time , time + (4*7*24*3600), None, self.timeBase) )

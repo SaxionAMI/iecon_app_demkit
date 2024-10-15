@@ -15,12 +15,21 @@
 from dev.curtDev import CurtDev
 
 from iecon.dev.tools.ieconDevTools import iecon_parse_spb_data_2_demkit
-from iecon.dev.mqtt_spb_wrapper.mqtt_spb_entity_scada import MqttSpbEntityScada
+from mqtt_spb_wrapper import MqttSpbEntityScada
 from iecon.database.ieconInfluxDB import IeconInfluxDBReader
 
 class IeconPvDev(CurtDev):
 
-    def __init__(self, host, iecon_scada: MqttSpbEntityScada, eon_name: str, eond_name : str, influx=True, reader=None):
+    def __init__(
+            self,
+            host,
+            iecon_scada: MqttSpbEntityScada,
+            eon_name: str,
+            eond_name : str,
+            influx=True,
+            reader=None,
+    ):
+
         CurtDev.__init__(self, eond_name, host, influx, reader)
 
         self.devtype = "Curtailable"
@@ -42,9 +51,10 @@ class IeconPvDev(CurtDev):
         }
 
         # IECON Subscribe to the device data
-        self.device = self._scada.get_edge_node_device(eon_name=self.eon_name,
-                                                       eond_name=self.eond_name,
-                                                       )
+        self.device = self._scada.get_edge_device(
+            eon_name=self.eon_name,
+            eond_name=self.eond_name,
+        )
 
         # Callback function registration
         # self.device.callback_data = self._spb_dev_data  # To display the data received ( Commented on deployment )
@@ -92,8 +102,8 @@ class IeconPvDev(CurtDev):
 
                 # Get the data from the device
                 # NOTE: the value returned is the last one. You can check timestamp property to validate value.
-                value = float(self.device.data.get_value("POW"))
-                timestamp = int(self.device.data.get_value_timestamp("POW"))
+                value = float(self.device.data["POW"].value)
+                timestamp = int(self.device.data["POW"].timestamp)
 
                 # FIX - Some inverters may not send data if generation is zero, so if data is too old, force to zero.
                 # LOQIO logic - if data doesn't change, they don't send a data package.

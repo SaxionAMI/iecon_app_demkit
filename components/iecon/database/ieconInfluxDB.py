@@ -1,5 +1,5 @@
 # Copyright 2023 University of Twente, 2024 Saxion UAS, Javier FG
-
+import datetime
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -252,7 +252,12 @@ class IeconInfluxDBReader(Reader):
                 + 'time >= ' + str(startTime) + '000000000 AND time < ' + str(endTime) + '000000000' \
                 + ' GROUP BY time(' + str(self.timeBase) + 's) fill(previous) ORDER BY time ASC'  # LIMIT '+str(l)
 
-        self.host.logDebug("[IeconInfluxdbReader].retrieveValues() - %s - %s" % (self.db.database, str(query)))
+        self.host.logDebug("[IeconInfluxdbReader].retrieveValues: %s _ %s , %s , %s" % (
+            datetime.datetime.fromtimestamp(startTime).isoformat(),
+            datetime.datetime.fromtimestamp(endTime).isoformat(),
+            self.db.database,
+            str(query))
+        )
 
         try:
             r = self.getData(query, startTime, endTime)
