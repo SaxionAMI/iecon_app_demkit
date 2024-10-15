@@ -16,5 +16,5 @@ scikit-learn
 scipy
 zmq
 
-mqtt_spb_wrapper==1.0.17
+mqtt_spb_wrapper==2.0.1
 ruamel.yaml==0.17.21
