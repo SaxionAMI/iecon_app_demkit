@@ -146,9 +146,9 @@ sim.enableDebug = IECON_DEBUG_EN
 
 # Not needed stuff for now, but kept as reference
 
-# # Settings for Weather services
-# weather = OpenWeatherEnv("Weather", sim)
-# weather.apiKey = demCfg.get("openweather_api_key", "")
+# Settings for Weather services
+weather = OpenWeatherEnv("Weather", sim)
+weather.apiKey = demCfg.get("openweather_api_key", "")
 
 
 # Settings for Sun services
