@@ -45,7 +45,8 @@ from dev.live.hassLoadDev import HassLoadDev  # Read a sensor from Hass
 from environment.sunEnv import SunEnv
 from environment.weatherEnv import WeatherEnv
 from environment.live.openWeatherEnv import OpenWeatherEnv
-from environment.live.solcastSunEnv import SolcastSunEnv
+# from environment.live.solcastSunEnv import SolcastSunEnv
+from environment.live.metnoSunEnv import MetnoSunEnv
 
 from dev.meterDev import MeterDev  # Meter device that aggregates the load of all individual devices
 
@@ -165,10 +166,9 @@ sim.enableDebug = IECON_DEBUG_EN
 weather = OpenWeatherEnv("Weather", sim)
 weather.apiKey = demCfg.get("openweather_api_key", "")
 
-
 # Settings for Sun services
-sun = SolcastSunEnv("sun-"+sim.db.database, sim)
-sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
+sun = MetnoSunEnv("sunMetno-"+sim.db.database, sim)
+sun.api_user_agent = demCfg.get("metno_api_user_agent", "")  # Get the user agent from the configuration file
 
 # FIX for IECON specific InfluxDBReader, only if DB is IeconInfluxDB class.
 # SUN data is located under EoN=db.eon_name, EoND=Sun.name

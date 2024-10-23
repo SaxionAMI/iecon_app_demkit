@@ -49,6 +49,9 @@ solcast_api_key:
 # OpenWeather API Key
 openweather_api_key:
 
+# Met.no (Yr.no) user agent - see https://developer.yr.no/doc/locationforecast/HowTO/
+metno_api_user_agent:
+
 # Variable output for logs and backups (stored within the workspace folder of a model by default)
 # Do not forget the trailing slash!
 var:
