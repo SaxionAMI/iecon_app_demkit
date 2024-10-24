@@ -113,7 +113,7 @@ class OpenWeatherEnv(WeatherEnv):
 		if self.lastPrediction < self.host.time():
 			try:
 				url = "http://api.openweathermap.org/data/2.5/forecast?lat="+str(self.latitude)+"&lon="+str(self.longitude)+"&units=metric&APPID="+self.apiKey
-				print(url)
+				# print(url)
 				r = requests.get(url)
 				if r.status_code != 200:
 					self.logWarning("Could not connect to OpenWeatherMap. Errorcode: "+str(r.status_code)+ "\t\t" + r.text)

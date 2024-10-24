@@ -213,9 +213,9 @@ class MetnoSunEnv(SunEnv):
 
             data = loads(r.text)
 
-            self.logDebug("Retrieving Met.no data:")
-            self.logDebug(url + " - " + str(user_agent))
-            self.logDebug(str(data))
+            self.logDebug("Retrieving Met.no API data")
+            # self.logDebug(url + " - " + str(user_agent))
+            # self.logDebug(str(data))
 
         except Exception as e:
             self.logWarning("API Met.no service error. Error:" + str(e))

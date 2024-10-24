@@ -44,17 +44,21 @@ class IeconPvDev(CurtDev):
         self.updateInterval = 1
         self.retrieving = False
 
-        # InfluxDB extra measurement tags
-        self.infuxTagsExtraLog = {
-            "spb_eon": eon_name,
-            "spb_eond": eond_name
-        }
-
         # IECON Subscribe to the device data
         self.device = self._scada.get_edge_device(
             eon_name=self.eon_name,
             eond_name=self.eond_name,
         )
+
+        # InfluxDB extra measurement tags -------------------------------------------------------------------
+        # If EON is defined, the data will be injected into the EoN InfluxDB Measurement s
+        self.infuxTagsExtraLog = {"EON": self.eon_name, "EOND": self.eond_name}
+        if self.device.attributes.get_value("ETYPE"):
+            self.infuxTagsExtraLog["ETYPE"] = self.device.attributes.get_value("ETYPE")
+        if self.device.attributes.get_value("CTYPE"):
+            self.infuxTagsExtraLog["CTYPE"] = self.device.attributes.get_value("CTYPE")
+        if self.device.attributes.get_value("CTYPEC"):
+            self.infuxTagsExtraLog["CTYPEC"] = self.device.attributes.get_value("CTYPEC")
 
         # Callback function registration
         # self.device.callback_data = self._spb_dev_data  # To display the data received ( Commented on deployment )

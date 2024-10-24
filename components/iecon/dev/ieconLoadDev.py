@@ -38,12 +38,6 @@ class IeconLoadDev(LoadDev):
         self.lastUpdate = -1
         self.updateInterval = 1  # Update every minute
 
-        # InfluxDB extra measurement tags
-        self.infuxTagsExtraLog = {
-            "spb_eon": eon_name,
-            "spb_eond": eond_name
-        }
-
         self._data = dict()     # Local storage of device data
 
         # Subscribe to the device data
@@ -52,7 +46,17 @@ class IeconLoadDev(LoadDev):
             eond_name=self.eond_name,
         )
 
-        # To display the data received ( for DEBUG -  Commented on deployment )
+        # InfluxDB extra measurement tags -------------------------------------------------------------------
+        # If EON is defined, the data will be injected into the EoN InfluxDB Measurement s
+        self.infuxTagsExtraLog = {"EON": self.eon_name, "EOND": self.eond_name}
+        if self.device.attributes.get_value("ETYPE"):
+            self.infuxTagsExtraLog["ETYPE"] = self.device.attributes.get_value("ETYPE")
+        if self.device.attributes.get_value("CTYPE"):
+            self.infuxTagsExtraLog["CTYPE"] = self.device.attributes.get_value("CTYPE")
+        if self.device.attributes.get_value("CTYPEC"):
+            self.infuxTagsExtraLog["CTYPEC"] = self.device.attributes.get_value("CTYPEC")
+
+    # To display the data received ( for DEBUG -  Commented on deployment )
         self.device.callback_data = self._spb_dev_data
 
         # If using IECON InfluxDB, use specific IECON InfluxDB readers

@@ -85,6 +85,7 @@ class IeconInfluxDB(InfluxDB):
 
         # -- IECON influxdb data format Conversion ----------------------------------------------
         db_data_line = self._db_demkit_data_2_iecon(db_data_line)     # convert data
+
         # self.host.logDebug("[InfluxDB.appendValuePrepared] " + db_data_line)
 
         self.data.append(db_data_line)
@@ -143,7 +144,7 @@ class IeconInfluxDB(InfluxDB):
 
                 # FIELD NAME .plan - remove and prefix
                 if ".plan" in field_name:
-                    field_name = "plan." + field_name.replace(".plan", "")
+                    field_name = "forecast." + field_name.replace(".plan", "")
                 # FIELD NAME .realized - remove and prefix
                 if ".realized" in field_name:
                     field_name = "realized." + field_name.replace(".realized", "")
@@ -164,10 +165,14 @@ class IeconInfluxDB(InfluxDB):
             for k, v in tags.items():
                 tags_str += ",%s=%s" % (k, v)
 
-            # TODO if tags contain spb_eon and spb_eond data belongs to an spb entity, we should inject the values in the entity measurement=spb_eon, ENAME=spb_eond
+            # If tags contain EON tag, the data belongs to an spb entity, we should inject the values in the entity measurement=spb_eon, ENAME=spb_eond
+            if tags.get("EON", None) is None:
+                _db_measurement = self.eon_name  # Demkit EoN (Default)
+            else:
+                _db_measurement = tags["EON"]  # EoN InfluxDB measurement
 
             # Generate the InfluxDB data point IECON format
-            res = "%s%s %s=%s %s" % (self.eon_name, tags_str, field_name, field_value, time)
+            res = "%s%s %s=%s %s" % (_db_measurement, tags_str, field_name, field_value, time)
 
             return res
 
