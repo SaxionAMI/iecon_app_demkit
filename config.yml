@@ -26,11 +26,16 @@ IECON_DEBUG_EN: False
 #   DEMKIT Parameters
 #----------------------------------------------------------------------------
 
-# User models location
+# Set workspace and model to run simulation
+model:
+  name: iecon_serene_single_house
+workspace:
+  path: workspace/iecon/
+
+
+# Components
 env:
   path: components/
-workspace:
-  path: workspace/
 
 # Database settings
 db:
