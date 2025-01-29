@@ -73,8 +73,8 @@ IECON_DEBUG_EN = demCfg.get("IECON_DEBUG_EN", False)
 IECON_DEBUG_EN = True
 
 SPB_EON_HOUSE = "eiot-16eda211b788"   # Specific house for this single simulation.
-SPB_EON_HOUSE = "eiot-012faeed6b29"
-SPB_EON_HOUSE = "eiot-3ad2398b76e8"
+# SPB_EON_HOUSE = "eiot-012faeed6b29"
+# SPB_EON_HOUSE = "eiot-3ad2398b76e8"
 
 # Missing configuration?
 if not demCfg["db"]["influx"]["address"]:
@@ -213,6 +213,8 @@ iecon_eon_provision_demkit_components(
     spb_scada=iecon_scada,
     spb_eon_name=SPB_EON_HOUSE,
 )
+
+sim.logMsg("----")
 
 # The last thing to do is starting the simulation!
 sim.startSimulation()
