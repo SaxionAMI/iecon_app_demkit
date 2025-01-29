@@ -20,6 +20,8 @@ class IeconLoadCtrl(LoadCtrl):
 	#Make some init function that requires the host to be provided
 	def __init__(self,  name,  dev, ctrl,  host):
 
+		name += "-ems-ctrl"	  # Append some postfix to identify demkit components
+
 		LoadCtrl.__init__(self,  name,  dev,  ctrl,  host)
 
 		# InfluxDB Modifications -------------------------------------------------------------------

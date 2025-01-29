@@ -19,6 +19,8 @@ class IeconLivePvCtrl(LivePvCtrl):
 
 	def __init__(self,  name,  dev, ctrl, sun, host):
 
+		name += "-ems-ctrl"		# Add postfix to identify demkit compnents
+
 		# Parent initialization
 		LivePvCtrl.__init__(self,  name,  dev, ctrl, sun, host)
 

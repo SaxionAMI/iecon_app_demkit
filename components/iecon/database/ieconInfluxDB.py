@@ -63,7 +63,7 @@ class IeconInfluxDB(InfluxDB):
         s += timestr
         s += '\n'
 
-        self.host.logDebug("[InfluxDB.appendValue        ] " + s.rstrip("\n"))
+        # self.host.logDebug("[InfluxDB.appendValue        ] " + s.rstrip("\n"))
 
         self.data.append(s)
 
@@ -78,7 +78,7 @@ class IeconInfluxDB(InfluxDB):
             timestr += "000"
         db_data_line = "%s%s %s" % (self.prefix, data, timestr)
 
-        self.host.logDebug("[InfluxDB.appendValuePrepared] " + db_data_line)
+        # self.host.logDebug("[InfluxDB.appendValuePrepared] " + db_data_line)
 
         self.data.append(db_data_line)
 

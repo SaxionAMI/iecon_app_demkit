@@ -67,6 +67,9 @@ class MeterDev(LoadDev):
 			self.watchlist += ["costs", "imported", "exported"]
 			self.persistence.setWatchlist(self.watchlist)
 
+		# Overwrite the DB measurement
+		self.log_db_measurement = self.host.log_db_measurement
+
 	def requestTickets(self, time):
 		# self.host.registerTicket(30000) # preTick
 		# self.host.registerTicket(101000) # timeTick

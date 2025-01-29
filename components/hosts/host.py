@@ -54,7 +54,10 @@ class Host(Core):
 
 		# Simulation settings
 		self.timeBase = 60
+		self.ctrlTimeBase = 900
 		self.intervals = 7*1440
+		self.alignplan = int(self.timezone.localize(datetime(2018, 1, 29)).timestamp())
+
 		self.extendedLogging = False
 
 		self.randomSeed = 42
@@ -106,6 +109,27 @@ class Host(Core):
 		self.staticTicketRTMeasure = 101000
 		self.staticTicketRTLoadFlow = 102000
 
+		# NOTE: AT MOST ONE OF THESE MAY BE TRUE! They can all be False, however
+		self.useCtrl = True  	 # Use smart control, defaults to Profile steering
+		self.useAuction = False  # Use an auction instead, NOTE useMC must be False!
+		self.usePlAuc = False    # Use a planned auction instead (Profile steering planning, auction realization),
+		# NOTE useMC must be False!
+
+		# Specific options for control
+		self.useCongestionPoints = False  # Use congestion points
+		self.useMultipleCommits = False   # Commit multiple profiles at once in profile steering
+		self.useChildPruning = False      # Remoce children after each iteration that haven't provided substantial imporvement
+		self.useIslanding = False         # Use islanding mode, only works with auction based control at the moment
+
+		self.useEC = True  	# Use Event-based control
+		self.usePP = False  # Use perfect predictions (a.k.a no predictions)
+		self.useQ = False  	# Perform reactive ELECTRICITY optimization
+		self.useMC = False  # Use three phases and multi-commodity control
+
+		# Clear the database or not. NOTE If disabled, ensure that the database exists!!!
+		self.clearDB = False
+
+
 
 	def startSimulation(self):
 		self.currentTime = self.startTime
@@ -132,7 +156,9 @@ class Host(Core):
 		self.db.createDatabase()
 
 		for e in self.entities:
-			self.logDebug("  Starting - " + str(e.name))
+			self.logDebug(
+				"  Starting: %s . %s . %s" % (self.db.database, e.log_db_measurement, e.name)
+			)
 			e.startup()
 
 	def shutdown(self):

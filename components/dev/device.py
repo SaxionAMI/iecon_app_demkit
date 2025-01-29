@@ -123,7 +123,7 @@ class Device(Entity):
 		return frequency
 
 	def requestPlanning(self):
-		self.zCast(self.controller, "requestPlanning")z
+		self.zCast(self.controller, "requestPlanning")
 
 	def triggerEvent(self, event):
 		if self.controller is not None:

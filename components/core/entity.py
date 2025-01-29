@@ -42,7 +42,7 @@ class Entity:
         self.timeBase = 60
 
         #For DB loging
-        if hasattr(host, "log_db_measurement"):
+        if hasattr(self.host, "log_db_measurement"):
             self.log_db_measurement = self.host.log_db_measurement
         else:
             self.log_db_measurement = "ems-demkit"

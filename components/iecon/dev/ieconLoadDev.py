@@ -22,12 +22,14 @@ from iecon.database.ieconInfluxDB import IeconInfluxDBReader
 class IeconLoadDev(LoadDev):
 
     def __init__(self, host,
-                 iecon_scada: MqttSpbEntityScada, eon_name: str, eond_name : str,
+                 iecon_scada: MqttSpbEntityScada,
+                 eon_name: str,
+                 eond_name : str,
                  influx=False,
                  ):
 
         # Initialize parent class
-        LoadDev.__init__(self, eond_name + "-ems", host, influx)
+        LoadDev.__init__(self, eond_name + "-dev", host, influx)
 
         # Save parameters locally
         self._scada = iecon_scada
