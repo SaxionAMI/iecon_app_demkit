@@ -12,52 +12,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+    --- IECON Example ---
+
+    This example is configured to run for a single house using the iecon-SERENE datastreams.
+    This example creates DEMKIT objects for consumption, generation and hems.
+
+    The reference iecon-SERENE house is: eiot-16eda211b788
+
+    Note: that at IECON, we are relaying data to the Demkit VPS from the iecon-SERENE datastreams.
+    Creating an environment for testing, where the real data streams or database are not affected by the testing
+
+    The demkit InfluxDB is modified for ieconInfluxDB class, to inject the demkit data generated on a
+    spB edge node called emsDemkit-<DOMAIN>. The InfluxReader is also modified to get data directly from
+    IECON InfluxDBn formated DB, which it is automatically stored from real time data by IECON application.
+
+"""
+
 import sys
 import time
 import random
 from datetime import datetime
 from pytz import timezone
-from pprint import pprint
 
 ### MODULES ###
 # Import the modules that you require for the model
 # Devices
-from dev.loadDev import LoadDev  # Static load device model
-from dev.live.hassLoadDev import HassLoadDev  # Read a sensor from Hass
+from dev.meterDev import MeterDev  # Meter device that aggregates the load of all individual devices
 
 # Environment
-from environment.sunEnv import SunEnv
-from environment.weatherEnv import WeatherEnv
 from environment.live.openWeatherEnv import OpenWeatherEnv
-from environment.live.solcastSunEnv import SolcastSunEnv
-
-from dev.meterDev import MeterDev  # Meter device that aggregates the load of all individual devices
+from environment.live.metnoSunEnv import MetnoSunEnv
 
 # Host, required to control/coordinate the simulation itself
 from hosts.liveHost import LiveHost
 
 # Controllers
 from ctrl.congestionPoint import CongestionPoint  # Import a congestion point
-from ctrl.loadCtrl import LoadCtrl  # Static load controller for predictions
-from ctrl.live.livePvCtrl import LivePvCtrl
 from ctrl.groupCtrl import GroupCtrl  # Group controller to control multiple devices, implements Profile Steering
 
 # IECON components
+from mqtt_spb_wrapper import MqttSpbEntityScada
+
 from iecon.dev.tools.ieconDevTools import iecon_eon_find_eond_by_attr
-from iecon.dev.mqtt_spb_wrapper import MqttSpbEntityScada
 from iecon.dev.ieconLoadDev import IeconLoadDev
 from iecon.dev.ieconPvDev import IeconPvDev
-from iecon.database.ieconInfluxDB import IeconInfluxDB, IeconInfluxDBReader
 
+from iecon.ctrl.ieconLoadCtrl import IeconLoadCtrl
+from iecon.ctrl.ieconLivePvCtrl import IeconLivePvCtrl
+
+from iecon.database.ieconInfluxDB import IeconInfluxDB, IeconInfluxDBReader
 
 # Load Demkit Configuration
 from conf.usrconf import demCfg
+
 
 SPB_DOMAIN_ID = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")
 IECON_DEBUG_EN = demCfg.get("IECON_DEBUG_EN", False)
 IECON_DEBUG_EN = True
 
 SPB_EON_HOUSE = "eiot-16eda211b788"   # Specific house for this single simulation.
+SPB_EON_HOUSE = "eiot-012faeed6b29"
+SPB_EON_HOUSE = "eiot-3ad2398b76e8"
+
 
 # Missing configuration?
 if not demCfg["db"]["influx"]["address"]:
@@ -122,11 +139,11 @@ random.seed(1337)
 
 # ---- HERE STARTS THE REAL MODEL DEFINITION OF THE HOUSE TO BE SIMULATED ----
 # First we need to instantiate the Host environment:
-sim = LiveHost(name="host-"+SPB_DOMAIN_ID)
+sim = LiveHost(name=SPB_DOMAIN_ID + "-ems-host")
 
-# # Use the IECON InfluxDB - data will be inserted as part of the spB domain. ( comment to use Demkit one )
-# # New EoN emsDemkit-DOMAIN is created and all demkit simulation data will be contained inside this EoN
-# sim.db = IeconInfluxDB(host=sim)
+# Use the IECON InfluxDB2x - Historic data is retrieved from stored raw IECON spB data.
+# A New EoN emsDemkit-<DOMAIN> is created, and all related demkit simulation data will be contained inside this spB EoN
+sim.db = IeconInfluxDB(host=sim)
 
 sim.startTime = startTime
 sim.timeBase = 10
@@ -147,25 +164,27 @@ sim.enableDebug = IECON_DEBUG_EN
 # Not needed stuff for now, but kept as reference
 
 # Settings for Weather services
-weather = OpenWeatherEnv("Weather", sim)
+weather = OpenWeatherEnv("weather-openweather", sim)
 weather.apiKey = demCfg.get("openweather_api_key", "")
 
-
 # Settings for Sun services
-sun = SolcastSunEnv("sun-"+sim.db.database, sim)
-sun.apiKey = demCfg.get("solcast_api_key", "")  # Get the key from the configuration file
+sun = MetnoSunEnv("sun-forec-Metno", sim)
+sun.api_user_agent = demCfg.get("metno_api_user_agent", "")  # Get the user agent from the configuration file
 
 # FIX for IECON specific InfluxDBReader, only if DB is IeconInfluxDB class.
 # SUN data is located under EoN=db.eon_name, EoND=Sun.name
 if sim.db.__class__.__name__ == "IeconInfluxDB":
-    sun.reader = IeconInfluxDBReader(host=sim, db_measurement=sim.db.eon_name, entity_name=sun.name, field_name="GHI")
+    sun.reader = IeconInfluxDBReader(host=sim,
+                                     db_measurement=sim.db.database_measurement,
+                                     entity_name=sun.name,
+                                     field_name="GHI")
 
 
-# --- IECON ---  Create the SCADA object to handle device discovery, data updates and send commands
+# --- IECON ---  Create the SCADA object to handle device discovery, realtime data updates and send commands
 iecon_scada = MqttSpbEntityScada(
     spb_domain_name=SPB_DOMAIN_ID,
-    spb_scada_name="demkit-ems",
-    debug_info=False,  # IECON_DEBUG_EN,
+    spb_scada_name="ems-demkit",
+    debug_enabled=False,  # IECON_DEBUG_EN,
 )
 
 # Connect to the MQTT spB broker
@@ -210,7 +229,6 @@ entity_consumption = iecon_eon_find_eond_by_attr(
     eond_attributes={
         'CTYPEC': "consumption",
         "CTYPE": "electricity",
-        "ETYPE": "powermeter",
     },
 )
 
@@ -223,6 +241,14 @@ entity_generation = iecon_eon_find_eond_by_attr(
     },
 )
 
+# Search for SUPPLY
+entity_supply = iecon_eon_find_eond_by_attr(
+    eon=eon,
+    eond_attributes={
+        'CTYPEC': "supply",
+        "CTYPE": "electricity",
+    },
+)
 
 # ---- DEMKIT Registration of entities ------------------------------------
 
@@ -233,9 +259,12 @@ if useCongestionPoints:
     cp.setLowerLimit('ELECTRICITY', -3 * 25 * 230)
 
 if useCongestionPoints:
-    ctrl = GroupCtrl("hems-" + eon_name, sim, None, cp)
+    ctrl = GroupCtrl(eon_name + "-ems-ctrl", sim, None, cp)
+
+    ctrl.log_db_measurement = eon_name  # Force the data to be inserted at the DB measurement for the EoN
+
 else:
-    ctrl = GroupCtrl("hems-" + eon_name, sim, None)  # params: name, simHost
+    ctrl = GroupCtrl(eon_name + "-ems-ctrl", sim, None)  # params: name, simHost
     ctrl.minImprovement = 0.01
     if useMultipleCommits:
         ctrl.maxIters = 4
@@ -244,27 +273,41 @@ else:
     ctrl.timeBase = ctrlTimeBase  # 900 is advised hre, must be a multiple of the simulation timeBase
     ctrl.useEventControl = useEC  # Enable / disable event-based control
     ctrl.isFleetController = True  # Very important to set this right in case of large structures. The root controller
-    # needs to be a fleetcontroller anyways. See 4.3 of Hoogsteen's thesis
+
+    # needs to be a fleet controller anyways. See 4.3 of Hoogsteen's thesis
     ctrl.strictComfort = not useIslanding
     ctrl.islanding = useIslanding
     ctrl.planHorizon = 2 * int(24 * 3600 / ctrlTimeBase)
     ctrl.planInterval = int(24 * 3600 / ctrlTimeBase)
     ctrl.predefinedNextPlan = alignplan
 
+    # Force DB log values to be written in the EoN DB Measurement.
+    ctrl.log_db_measurement = eon_name      # Force the data to be inserted at the DB measurement for the EoN
 
 # --- HOUSE METER ( supply point at DEMKIT )
-sm = MeterDev(name="housesm-" + eon_name, host=sim)
-sm.infuxTagsExtraLog["eon"] = eon_name  # Set the EoN value
+if entity_supply:
+
+    # Print some information
+    sim.logMsg("   Found SUPPLY entity : " + entity_supply +
+               " - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in
+                            eon.entities_eond[entity_supply].attributes.get_dictionary()]))
+
+    # Virtual simulation device - This is the equivalent to the physical SUPPLY spB meter
+    sm = MeterDev(name=entity_supply + "-ems-dev-virt", host=sim)
+
+else:
+    sim.logWarning("  This house doesn't have a SUPPLY entity, house is skipped from demkit!")
 
 
 # --- CONSUMPTION ---- Add house consumption to the house
 if entity_consumption:
 
     # Print some information
-    sim.logMsg("  Found CONSUMPTION entity : " + entity_consumption)
-    for attr in eon.entities_eond[entity_consumption].attributes.get_dictionary():
-        sim.logMsg("      %s : %s" % (str(attr["name"]), str(attr["value"])))
+    sim.logMsg("   Found CONSUMPTION entity : " + entity_consumption +
+               " - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in
+                            eon.entities_eond[entity_consumption].attributes.get_dictionary()]))
 
+    # Device Entity
     load = IeconLoadDev(
         host=sim,
         iecon_scada=iecon_scada,
@@ -272,17 +315,18 @@ if entity_consumption:
         eond_name=entity_consumption,
         influx=True,
     )
-    # load = HassLoadDev(name="hassLoadDev", host=sim, influx=True)
     load.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
     load.strictComfort = not useIslanding
     sm.addDevice(load)
 
-    loadctrl = LoadCtrl(
-        name="loadctrl-" + load.name,
+    # Controller entity
+    loadctrl = IeconLoadCtrl(
+        name=entity_consumption + "-ems-ctrl",
         dev=load,
         ctrl=ctrl,
         host=sim
     )
+    loadctrl.log_db_measurement = eon_name  # Force DB log values to be written in the EoN DB Measurement.
     loadctrl.perfectPredictions = usePP  # Use perfect predictions or not
     loadctrl.useEventControl = useEC  # Use event-based control
     loadctrl.timeBase = ctrlTimeBase  # TimeBase for controllers
@@ -297,20 +341,22 @@ else:
 if entity_generation:
 
     # print some info messages
-    sim.logMsg("  Found GENERATION entity : " + entity_generation)
-    for attr in eon.entities_eond[entity_generation].attributes.get_dictionary():
-        sim.logMsg("      %s : %s" % (str(attr["name"]), str(attr["value"])))
+    sim.logMsg("   Found GENERATION entity : " + entity_generation +
+               " - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in eon.entities_eond[entity_generation].attributes.get_dictionary() ]))
 
-    pv = IeconPvDev(host=sim,
-                    iecon_scada=iecon_scada,
-                    eon_name=eon_name,
-                    eond_name=entity_generation,
-                    influx=True)
+    pv = IeconPvDev(
+        host=sim,
+        iecon_scada=iecon_scada,
+        eon_name=eon_name,
+        eond_name=entity_generation,
+        influx=True
+    )
     pv.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
     pv.strictComfort = not useIslanding
     sm.addDevice(pv)
 
-    pvpc = LivePvCtrl("pvctrl-" + pv.eond_name, pv, ctrl, sun, sim)
+    pvpc = IeconLivePvCtrl(entity_generation + "-ems-ctrl", pv, ctrl, sun, sim)
+    pvpc.log_db_measurement = eon_name  # Force DB log values to be written in the EoN DB Measurement.
     pvpc.useEventControl = useEC
     pvpc.perfectPredictions = usePP
     pvpc.strictComfort = not useIslanding
@@ -323,176 +369,3 @@ else:
 # The last thing to do is starting the simulation!
 sim.startSimulation()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## OTHER STUFF FOR REFERENCE
-
-# ADDING A HEMS
-# add a controller if necessary
-# if useCongestionPoints:
-# cp = CongestionPoint()
-# cp.setUpperLimit('ELECTRICITY', 3*25*230) # 3 phase 25A connection ELECTRICITY limits
-# cp.setLowerLimit('ELECTRICITY', -3*25*230)
-
-# if useCongestionPoints:
-# ctrl = GroupCtrl("OlstCtrl",  sim , None, cp)
-# else:
-# ctrl = GroupCtrl("OlstCtrl",  sim , None) #params: name, simHost
-# ctrl.minImprovement = 0.01
-# if useMultipleCommits:
-# ctrl.maxIters = 4
-# else:
-# ctrl.maxIters = 8
-# ctrl.timeBase = ctrlTimeBase	# 900 is advised hre, must be a multiple of the simulation timeBase
-# ctrl.useEventControl = useEC	# Enable / disable event-based control
-# ctrl.isFleetController = True 	# Very important to set this right in case of large structures. The root controller needs to be a fleetcontroller anyways. See 4.3 of Hoogsteen's thesis
-# ctrl.strictComfort = not useIslanding
-# ctrl.islanding = useIslanding
-# ctrl.planHorizon = 2*int(24*3600/ctrlTimeBase)
-# ctrl.planInterval = int(24*3600/ctrlTimeBase)
-# ctrl.predefinedNextPlan = alignplan
-
-
-# unc = HassLoadDev("LOAD",  sim, influx=True) #params: name, simHost
-# unc.url = ""
-# unc.bearer = ""
-# unc.sensor = "sensor.total_power" # Sensor name as known to Home Assistant
-# unc.timeBase = timeBase		# Timebase, NOTE this is the timebase of the dataset and not the simulation!
-# unc.strictComfort = not useIslanding
-# unc.infuxTags = {"name": "LOAD"} # Needed to get the load from the database
-# sm.addDevice(unc)
-
-# uncc = LoadCtrl("LOADCTRL", unc, ctrl, sim) 	# params: name, device, higher-level controller, simHost
-# uncc.perfectPredictions = usePP							# Use perfect predictions or not
-# uncc.useEventControl = useEC							# Use event-based control
-# uncc.timeBase = ctrlTimeBase							# TimeBase for controllers
-# if useMC:
-# uncc.commodities = []								# Clear the list
-# uncc.commodities.append(commodities[phase-1])		# Add applicable commodity
-# uncc.weights = dict(weights)						# Overwrite the weights
-# uncc.strictComfort = not useIslanding
-# uncc.islanding = useIslanding
-
-
-# # Solar panel based on provided data
-# pv = PvOutputDev("PV", sim, influx=True, sun=sun)  # params: name, device, higher-level controller, simHost
-# pv.url = 'https://pvoutput.org/intraday.jsp?id=87532&sid=77615'
-# pv.scaling = 1
-# pv.timeBase = timeBase  # Timebase of the dataset, not the simulation!
-# pv.strictComfort = not useIslanding
-# pv.infuxTags = {"name": "PV"} # Needed to get the load from the database
-
-# # Note, in all these settings you will need to provide an index (first element).
-# # Based on the houseNum, this index can be obtained using the alpg.indexFromFile helper!
-# # e.g:
-# # idx = alpg.indexFromFile("dataPhotovoltaicSettings.txt", houseNum)
-# # and then use e.g.:
-
-# sm.addDevice(pv)
-
-# pvpc = LivePvCtrl("PVCTRL", pv, ctrl, sun, sim)
-# pvpc.useEventControl = useEC
-# pvpc.perfectPredictions = usePP
-# pvpc.strictComfort = not useIslanding
-# pvpc.islanding = useIslanding
-
-
-# # BATTERY
-# #add a battery
-# # Follows very much the same reasoning as with the EV above, so the documentation is sparse here
-# buf = BufDev("BAT", sim, sm, ctrl)		# params: name, simHost
-# #Set the parameters
-# buf.chargingELECTRICITYs = [-10000,10000]
-# buf.discrete = False
-
-# buf.capacity = 40000
-# buf.initialSoC = initialSoC
-# buf.soc = initialSoC
-
-# # Marks to spawn events
-# buf.highMark = buf.capacity*0.9
-# buf.lowMark = buf.capacity*0.1
-
-# buf.strictComfort = not useIslanding
-# sm.addDevice(buf)
-
-
-# bufc = BufCtrl("BATCTRL",  buf,  ctrl,  sim) 	# params: name, device, higher-level controller, simHost
-# bufc.useEventControl = useEC
-# bufc.timeBase = ctrlTimeBase
-# if useMC:
-# bufc.weights = dict(weights)
-# bufc.commodities = []
-# bufc.commodities.append(commodities[phase-1])
-# bufc.strictComfort = not useIslanding
-# bufc.islanding = useIslanding
-# bufc.replanInterval = [900,900]
-
-# # No control, add the battery to the smart meter
-# buf.meter = sm
-# buf.balancing = True
-
-
-# ########## Adding the first house
-# sm = MeterDev("H1-METER",  sim) #params: name, simHost
-
-# # Load model of this house
-# load = SedconLoadDev("H1-LOAD", sim, influx=True)  # params: name, device, higher-level controller, simHost
-# load.url = "http://sedconbroker_nossl:5000"
-# load.username = "demkit"
-# load.password = "hGsgbY2020!"
-# load.meterid = 1
-# load.timeBase = timeBase  # Timebase of the dataset, not the simulation!
-# load.strictComfort = not useIslanding
-# load.infuxTags = {"name": "H1-LOAD"} # Needed to get the load from the database
-
-# sm.addDevice(load)
-
-# # Load controller
-# loadc = LoadCtrl("H1-LOADCTRL", load, ctrl, sim) 	# params: name, device, higher-level controller, simHost
-# load.perfectPredictions = usePP							# Use perfect predictions or not
-# loadc.useEventControl = useEC							# Use event-based control
-# loadc.timeBase = ctrlTimeBase							# TimeBase for controllers
-# loadc.strictComfort = not useIslanding
-# loadc.islanding = useIslanding
-
-
-# # Solar panel based on provided data
-# pv = SedconPvDev("H1-PV", sim, influx=True, sun=sun)  # params: name, device, higher-level controller, simHost
-# pv.url = "http://sedconbroker_nossl:5000"
-# pv.username = "demkit"
-# pv.password = "hGsgbY2020!"
-# pv.meterid = 1
-# pv.timeBase = timeBase  # Timebase of the dataset, not the simulation!
-# pv.strictComfort = not useIslanding
-# pv.infuxTags = {"name": "H1-PV"} # Needed to get the load from the database
-
-# # Note, in all these settings you will need to provide an index (first element).
-# # Based on the houseNum, this index can be obtained using the alpg.indexFromFile helper!
-# # e.g:
-# # idx = alpg.indexFromFile("dataPhotovoltaicSettings.txt", houseNum)
-# # and then use e.g.:
-
-# sm.addDevice(pv)
-
-# pvpc = LivePvCtrl("H1-PVCTRL", pv, ctrl, sun, sim)
-# pvpc.useEventControl = useEC
-# pvpc.perfectPredictions = usePP
-# pvpc.strictComfort = not useIslanding
-# pvpc.islanding = useIslanding

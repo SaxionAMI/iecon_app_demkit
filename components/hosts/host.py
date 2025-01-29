@@ -31,6 +31,8 @@ class Host(Core):
 		# Type of simulation
 		Core.__init__(self, name)
 
+		self.type = "host"
+
 		# Time accounting, all in UTC! Use self.timezone to convert into local time
 		self.timezone = demCfg['timezone']
 		self.timeformat = "%d-%m-%Y %H:%M:%S %Z%z"
@@ -321,8 +323,9 @@ class Host(Core):
 #         tags = {'devtype':self.devtype,  'name':self.name}
 #         values = {measurement:value}
 #         self.host.logValue(self.type,  tags,  values, time)
-		data = "host,devtype="+self.devtype+",name="+self.name+" "+measurement+"="+str(value)
-		self.host.logValuePrepared(data, time, deltatime)
+# 		data = "host,devtype="+self.devtype+",name="+self.name+" "+measurement+"="+str(value)
+# 		self.host.logValuePrepared(data, time, deltatime)
+		self.logValue(measurement=measurement, value=value)  # , tags_extra={"DEMKTYPE": self.devtype})
 
 
 	def logDeviceStats(self, time):
@@ -362,23 +365,29 @@ class Host(Core):
 				# Some data may be missing, not a problem that should make the system crash
 
 		#Push the data to the storage
-		self.logValuePrepared("host,devtype=total,name="+self.name+" W-power.real="+str(totalPower.real))
-		self.logValuePrepared("host,devtype=total,name="+self.name+" W-power.imag="+str(totalPower.imag))
-		self.logValuePrepared("host,devtype=total,name="+self.name+" Wh-soc="+str(totalSoC))
+		self.logValue(measurement="W-power.real", value=totalPower.real)
+		self.logValue(measurement="W-power.imag", value=totalPower.imag)
+		self.logValue(measurement="Wh-soc", value=totalSoC)
+
 
 		#now per commodity
 		for k, v in totalPowerC.items():
-			self.logValuePrepared("host,devtype=total,name="+self.name+" W-power.real.c."+k+"="+str(v.real))
-			self.logValuePrepared("host,devtype=total,name="+self.name+" W-power.imag.c."+k+"="+str(v.imag))
+			# self.logValuePrepared("host,devtype=total,name="+self.name+" W-power.real.c."+k+"="+str(v.real))
+			# self.logValuePrepared("host,devtype=total,name="+self.name+" W-power.imag.c."+k+"="+str(v.imag))
+			self.logValue(measurement="W-power.real.c."+k, value=v.real, tags_extra={"DEMKTYPE":"total"})
+			self.logValue(measurement="W-power.imag.c."+k, value=v.imag, tags_extra={"DEMKTYPE":"total"})
 
 		#now per devtype
 		for key in power.keys():
 			for k,v in power[key].items():
-				self.logValuePrepared("host,devtype="+key+",name="+self.name+" W-power.real.c."+k+"="+str(v.real))
-				self.logValuePrepared("host,devtype="+key+",name="+self.name+" W-power.imag.c."+k+"="+str(v.imag))
+				# self.logValuePrepared("host,devtype="+key+",name="+self.name+" W-power.real.c."+k+"="+str(v.real))
+				# self.logValuePrepared("host,devtype="+key+",name="+self.name+" W-power.imag.c."+k+"="+str(v.imag))
+				self.logValue(measurement="W-power.real.c." + k, value=v.real, tags_extra={"DEMKTYPE": key})
+				self.logValue(measurement="W-power.imag.c." + k, value=v.imag, tags_extra={"DEMKTYPE": key})
 
 		for k,v in soc.items():
-			self.logValuePrepared("host,devtype="+k+",name="+self.name+" Wh-soc="+str(v))
+			# self.logValuePrepared("host,devtype="+k+",name="+self.name+" Wh-soc="+str(v))
+			self.logValue(measurement="Wh-soc", value=v, tags_extra={"DEMKTYPE": k})
 
 
 	def logControllerStats(self, time):

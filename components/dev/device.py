@@ -52,7 +52,6 @@ class Device(Entity):
 		# Persistence
 		self.watchlist = ["consumption", "plan"]
 		self.infuxTags = None
-		self.infuxTagsExtraLog = {}	# Optional tags written during logging
 
 	def setPlan(self,  plan):
 		self.lockPlanning.acquire()
@@ -122,35 +121,9 @@ class Device(Entity):
 			frequency = self.zCall(self.flowMeter, "getFrequency")
 
 		return frequency
-		
-	def logValue(self, measurement,  value, time=None, deltatime=None):
-
-		# If there is no tags, initialize emtpy
-		if self.infuxTags is None:
-			self.infuxTags = {}
-
-		tags_str = ""
-		self.infuxTags.update({'devtype': self.devtype, 'name': self.name})		# Always override this values
-
-		# Serialize the tags string
-		for k, v in self.infuxTags.items():
-			tags_str += ",%s=%s" % (k, v)
-
-		# Serialize extra tags
-		if self.infuxTagsExtraLog and isinstance(self.infuxTagsExtraLog, dict):
-			for k, v in self.infuxTagsExtraLog.items():
-				tags_str += ",%s=%s" % (k, v)
-
-		# Get Influx Data point
-		tags_str = tags_str.replace(" ", "_")  # Tags - remove spaces, problematic for influxdb
-		data = self.type + tags_str + " " + measurement + "=" + str(value)
-
-		# print("INFLUX DATA - " + data)
-
-		self.host.logValuePrepared(data, time, deltatime)
 
 	def requestPlanning(self):
-		self.zCast(self.controller, "requestPlanning")
+		self.zCast(self.controller, "requestPlanning")z
 
 	def triggerEvent(self, event):
 		if self.controller is not None:

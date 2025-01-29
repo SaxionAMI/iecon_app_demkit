@@ -26,6 +26,7 @@ from util.funcReader import FuncReader
 class GroupCtrl(OptCtrl):
 	def __init__(self, name, host, parent=None, congestionPoint=None, dev=None):
 		OptCtrl.__init__(self, name, host)
+
 		self.devtype = "GroupController"
 
 		self.parent = parent

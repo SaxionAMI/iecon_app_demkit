@@ -68,6 +68,10 @@ class MetnoSunEnv(SunEnv):
             "irradiationDNI": "Wm2-irradiation.DNI"
         }
 
+        # extra DB tags
+        self.log_db_tags_extra["ETYPE"] = "sun-provider-forecast"   # Perhaps we need to update this
+
+
     def preTick(self, time, deltatime=0):
 
         # Retrieve data from API
@@ -213,7 +217,7 @@ class MetnoSunEnv(SunEnv):
 
             data = loads(r.text)
 
-            self.logDebug("Retrieving Met.no API data")
+            # self.logDebug("Retrieving Met.no API data")
             # self.logDebug(url + " - " + str(user_agent))
             # self.logDebug(str(data))
 

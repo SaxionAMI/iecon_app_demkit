@@ -107,7 +107,9 @@ class DevCtrl(OptCtrl):
 		OptCtrl.startSynchronizedPlanning(self, signal)
 
 	def endSynchronizedPlanning(self, signal):
+
 		self.lockPlanning.acquire()
+
 		if self.useEventControl:
 			# USed to create a local planning in event based control to fix differences/infeasible schedules that may have emerged in the time since the planning started
 			# Get the update device state
@@ -137,14 +139,14 @@ class DevCtrl(OptCtrl):
 		if self.forwardLogging and self.host.logControllers:
 			for c in signal.commodities:
 				for i in range(0,  signal.planHorizon):
-					self.logValue("W-power.plan.real.c."+c,  self.plan[c][int(signal.time + i*signal.timeBase)].real, int(signal.time + i*signal.timeBase))
+					self.logValue("forecast.POW",  self.plan[c][int(signal.time + i*signal.timeBase)].real, int(signal.time + i*signal.timeBase))   # "W-power.plan.real.c."+c
 					if self.host.extendedLogging:
-						self.logValue("W-power.plan.imag.c." + c, self.plan[c][int(signal.time + i*signal.timeBase)].imag, int(signal.time + i * signal.timeBase))
+						self.logValue("forecast.POW_REAC", self.plan[c][int(signal.time + i*signal.timeBase)].imag, int(signal.time + i * signal.timeBase))   # "W-power.plan.imag.c."
 
 					if self.useEventControl:
-						self.logValue("W-power.realized.imag.c." + c,self.realized[c][int(signal.time + i * signal.timeBase)].imag,int(signal.time + i * signal.timeBase))
+						self.logValue("realized.POW", self.realized[c][int(signal.time + i * signal.timeBase)].imag,int(signal.time + i * signal.timeBase))    # "W-power.realized.imag.c." + c
 						if self.host.extendedLogging:
-							self.logValue("W-power.realized.real.c." + c,self.realized[c][int(signal.time + i * signal.timeBase)].real,int(signal.time + i * signal.timeBase))
+							self.logValue("realized.POW_REAC", self.realized[c][int(signal.time + i * signal.timeBase)].real,int(signal.time + i * signal.timeBase))    # "W-power.realized.real.c." + c
 
 		self.lockPlanning.release()
 		return dict(self.realized)

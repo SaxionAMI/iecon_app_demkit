@@ -53,15 +53,6 @@ class EnvEntity(Entity):
 	
 	def logStats(self, time):
 		pass
-		
-	def logValue(self, measurement,  value, time=None, deltatime=None):
-#		Old, code which is more generic, but slower. Kept for reference.
-# 		tags = {'devtype':self.devtype,  'name':self.name}
-# 		values = {measurement:value}
-# 		self.host.logValue(self.type,  tags,  values, time)
-
-		data = self.type+",devtype="+self.devtype+",name="+self.name+" "+measurement+"="+str(value)
-		self.host.logValuePrepared(data, time, deltatime)
 
 	def getProperties(self):
 		# Get the properties of this device

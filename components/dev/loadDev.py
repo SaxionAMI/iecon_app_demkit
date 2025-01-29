@@ -63,7 +63,7 @@ class LoadDev(Device):
 					timeBase=self.timeBase,
 					host=self.host,
 					database=self.host.db.database,
-					value = "W-power.real.c."+self.commodities[0],
+					value="POW",  # "W-power.real.c."+self.commodities[0],
 					tags=_tags,
 				)
 				self.readerReactive = InfluxDBReader(
@@ -71,7 +71,7 @@ class LoadDev(Device):
 					timeBase=self.timeBase,
 					host=self.host,
 					database=self.host.db.database,
-					value="W-power.imag.c." + self.commodities[0],
+					value="POW_REAC",   # "W-power.imag.c." + self.commodities[0]
 					tags=_tags_reactive,
 				)
 
@@ -110,14 +110,14 @@ class LoadDev(Device):
 		self.lockState.acquire()
 		try:
 			for c in self.commodities:
-				self.logValue("W-power.real.c." + c, self.consumption[c].real)
+				self.logValue("POW", self.consumption[c].real, tags={"CTYPE": c.lower()})   # "W-power.real.c." + c
 				if self.host.extendedLogging:
-					self.logValue("W-power.imag.c." + c, self.consumption[c].imag)
+					self.logValue("POW_REAC", self.consumption[c].imag, tags={"CTYPE": c.lower()})   # "W-power.imag.c." + c
 
 				if self.smartOperation and c in self.plan and len(self.plan[c]) > 0:
-					self.logValue("W-power.plan.real.c."+c, self.plan[c][0][1].real)
+					self.logValue("plan.POW", self.plan[c][0][1].real, tags={"CTYPE": c.lower()})    # "W-power.plan.real.c."+c
 					if self.host.extendedLogging:
-						self.logValue("W-power.plan.imag.c."+c, self.plan[c][0][1].imag)
+						self.logValue("plan.POW_REAC", self.plan[c][0][1].imag, tags={"CTYPE": c.lower()})    # "W-power.plan.imag.c."+c
 		except:
 			pass
 		self.lockState.release()

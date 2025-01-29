@@ -30,6 +30,7 @@ class InfluxDB():
 		self.address = demCfg['db']['influx']['address']
 		self.port = demCfg['db']['influx']['port']
 		self.database = demCfg['db']['influx']['dbname']
+		self.database_measurement = "ems-demkit"
 		self.prefix = ""
 
 		self.username = demCfg['db']['influx']['username']

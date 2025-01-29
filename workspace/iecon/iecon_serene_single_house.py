@@ -15,12 +15,12 @@
 """
     --- IECON Example ---
 
-    This example is configured to run for a single house using the SERENE datastreams.
+    This example is configured to run for a single house using the iecon-SERENE datastreams.
     This example creates DEMKIT objects for consumption, generation and hems.
 
-    The reference SERENE house is: eiot-16eda211b788
+    The reference iecon-SERENE house is: eiot-16eda211b788
 
-    Note: that at IECON, we are relaying data to the Demkit VPS from the SERENE datastreams.
+    Note: that at IECON, we are relaying data to the Demkit VPS from the iecon-SERENE datastreams.
     Creating an environment for testing, where the real data streams or database are not affected by the testing
 
     The demkit InfluxDB is modified for ieconInfluxDB class, to inject the demkit data generated on a
@@ -38,16 +38,11 @@ from pytz import timezone
 ### MODULES ###
 # Import the modules that you require for the model
 # Devices
-from dev.loadDev import LoadDev  # Static load device model
-from dev.live.hassLoadDev import HassLoadDev  # Read a sensor from Hass
+from dev.meterDev import MeterDev  # Meter device that aggregates the load of all individual devices
 
 # Environment
-from environment.sunEnv import SunEnv
-from environment.weatherEnv import WeatherEnv
 from environment.live.openWeatherEnv import OpenWeatherEnv
 from environment.live.metnoSunEnv import MetnoSunEnv
-
-from dev.meterDev import MeterDev  # Meter device that aggregates the load of all individual devices
 
 # Host, required to control/coordinate the simulation itself
 from hosts.liveHost import LiveHost
@@ -71,11 +66,13 @@ from iecon.database.ieconInfluxDB import IeconInfluxDB, IeconInfluxDBReader
 # Load Demkit Configuration
 from conf.usrconf import demCfg
 
+
 SPB_DOMAIN_ID = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")
 IECON_DEBUG_EN = demCfg.get("IECON_DEBUG_EN", False)
 IECON_DEBUG_EN = True
 
 SPB_EON_HOUSE = "eiot-16eda211b788"   # Specific house for this single simulation.
+
 
 # Missing configuration?
 if not demCfg["db"]["influx"]["address"]:
@@ -140,7 +137,7 @@ random.seed(1337)
 
 # ---- HERE STARTS THE REAL MODEL DEFINITION OF THE HOUSE TO BE SIMULATED ----
 # First we need to instantiate the Host environment:
-sim = LiveHost(name="host-"+SPB_DOMAIN_ID)
+sim = LiveHost(name="simhost-"+SPB_DOMAIN_ID)
 
 # Use the IECON InfluxDB2x - Historic data is retrieved from stored raw IECON spB data.
 # A New EoN emsDemkit-<DOMAIN> is created, and all related demkit simulation data will be contained inside this spB EoN
@@ -165,23 +162,23 @@ sim.enableDebug = IECON_DEBUG_EN
 # Not needed stuff for now, but kept as reference
 
 # Settings for Weather services
-weather = OpenWeatherEnv("Weather", sim)
+weather = OpenWeatherEnv("weather-" + sim.db.database, sim)
 weather.apiKey = demCfg.get("openweather_api_key", "")
 
 # Settings for Sun services
-sun = MetnoSunEnv("sunMetno-"+sim.db.database, sim)
+sun = MetnoSunEnv("sunforec-"+sim.db.database, sim)
 sun.api_user_agent = demCfg.get("metno_api_user_agent", "")  # Get the user agent from the configuration file
 
 # FIX for IECON specific InfluxDBReader, only if DB is IeconInfluxDB class.
 # SUN data is located under EoN=db.eon_name, EoND=Sun.name
 if sim.db.__class__.__name__ == "IeconInfluxDB":
-    sun.reader = IeconInfluxDBReader(host=sim, eon_name=sim.db.eon_name, eond_name=sun.name, field_name="GHI")
+    sun.reader = IeconInfluxDBReader(host=sim, db_measurement=sim.db.eon_name, entity_name=sun.name, field_name="GHI")
 
 
-# --- IECON ---  Create the SCADA object to handle device discovery, data updates and send commands
+# --- IECON ---  Create the SCADA object to handle device discovery, realtime data updates and send commands
 iecon_scada = MqttSpbEntityScada(
     spb_domain_name=SPB_DOMAIN_ID,
-    spb_scada_name="demkit-ems",
+    spb_scada_name="ems-demkit",
     debug_enabled=False,  # IECON_DEBUG_EN,
 )
 
@@ -227,7 +224,6 @@ entity_consumption = iecon_eon_find_eond_by_attr(
     eond_attributes={
         'CTYPEC': "consumption",
         "CTYPE": "electricity",
-        "ETYPE": "powermeter",
     },
 )
 
@@ -240,6 +236,14 @@ entity_generation = iecon_eon_find_eond_by_attr(
     },
 )
 
+# Search for SUPPLY
+entity_supply = iecon_eon_find_eond_by_attr(
+    eon=eon,
+    eond_attributes={
+        'CTYPEC': "supply",
+        "CTYPE": "electricity",
+    },
+)
 
 # ---- DEMKIT Registration of entities ------------------------------------
 
@@ -250,9 +254,9 @@ if useCongestionPoints:
     cp.setLowerLimit('ELECTRICITY', -3 * 25 * 230)
 
 if useCongestionPoints:
-    ctrl = GroupCtrl("hems-" + eon_name, sim, None, cp)
+    ctrl = GroupCtrl(eon_name, sim, None, cp)
 else:
-    ctrl = GroupCtrl("hems-" + eon_name, sim, None)  # params: name, simHost
+    ctrl = GroupCtrl(eon_name + "-ems", sim, None)  # params: name, simHost
     ctrl.minImprovement = 0.01
     if useMultipleCommits:
         ctrl.maxIters = 4
@@ -261,27 +265,51 @@ else:
     ctrl.timeBase = ctrlTimeBase  # 900 is advised hre, must be a multiple of the simulation timeBase
     ctrl.useEventControl = useEC  # Enable / disable event-based control
     ctrl.isFleetController = True  # Very important to set this right in case of large structures. The root controller
-    # needs to be a fleetcontroller anyways. See 4.3 of Hoogsteen's thesis
+    # needs to be a fleet controller anyways. See 4.3 of Hoogsteen's thesis
     ctrl.strictComfort = not useIslanding
     ctrl.islanding = useIslanding
     ctrl.planHorizon = 2 * int(24 * 3600 / ctrlTimeBase)
     ctrl.planInterval = int(24 * 3600 / ctrlTimeBase)
     ctrl.predefinedNextPlan = alignplan
 
+    # Force the logging into IECON edge entity
+    ctrl.infuxTagsExtraLog["EON"] = eon_name  # Edge entity
+    ctrl.infuxTagsExtraLog["EOND"] = ctrl.name  # Device name - In this case the EMS Controller entity
+    ctrl.infuxTagsExtraLog["ETYPE"] = "ems-device"  # Entity type
+    ctrl.infuxTagsExtraLog["DB_MEASUREMENT"] = eon_name  # Save data to the edge list of devices
+
 
 # --- HOUSE METER ( supply point at DEMKIT )
-sm = MeterDev(name="housesm-" + eon_name, host=sim)
-sm.infuxTagsExtraLog["eon"] = eon_name  # Set the EoN value
+if entity_supply:
+
+    # Print some information
+    sim.logMsg("   Found SUPPLY entity : " + entity_supply +
+               " - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in
+                            eon.entities_eond[entity_supply].attributes.get_dictionary()]))
+
+    sm = MeterDev(name=entity_supply + "-ems", host=sim)
+
+    # Add some extra InfluxDB tags to format it as IECON
+    sm.infuxTagsExtraLog["EON"] = eon_name  # Set the EoN value
+    sm.infuxTagsExtraLog["EOND"] = sm.name  # Device name - In this case the EMS Controller entity
+    sm.infuxTagsExtraLog["ETYPE"] = "ems-device"  # IECON based attributes
+    sm.infuxTagsExtraLog["CTYPE"] = "electricity"
+    sm.infuxTagsExtraLog["CTYPEC"] = "supply"
+    sm.infuxTagsExtraLog["DB_MEASUREMENT"] = eon_name  # Save data to the edge list of devices
+
+else:
+    sim.logWarning("  This house doesn't have a SUPPLY entity, house is skipped from demkit!")
 
 
 # --- CONSUMPTION ---- Add house consumption to the house
 if entity_consumption:
 
     # Print some information
-    sim.logMsg("  Found CONSUMPTION entity : " + entity_consumption)
-    for attr in eon.entities_eond[entity_consumption].attributes.get_dictionary():
-        sim.logMsg("      %s : %s" % (str(attr["name"]), str(attr["value"])))
+    sim.logMsg("   Found CONSUMPTION entity : " + entity_consumption +
+               " - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in
+                            eon.entities_eond[entity_consumption].attributes.get_dictionary()]))
 
+    # Device Entity
     load = IeconLoadDev(
         host=sim,
         iecon_scada=iecon_scada,
@@ -291,10 +319,12 @@ if entity_consumption:
     )
     load.timeBase = sim.timeBase  # Timebase of the dataset, not the simulation!
     load.strictComfort = not useIslanding
+    load.infuxTagsExtraLog
     sm.addDevice(load)
 
+    # Controller entity
     loadctrl = IeconLoadCtrl(
-        name="loadctrl-" + load.name,
+        name=entity_consumption + "-ems",
         dev=load,
         ctrl=ctrl,
         host=sim
@@ -313,9 +343,8 @@ else:
 if entity_generation:
 
     # print some info messages
-    sim.logMsg("  Found GENERATION entity : " + entity_generation)
-    for attr in eon.entities_eond[entity_generation].attributes.get_dictionary():
-        sim.logMsg("      %s : %s" % (str(attr["name"]), str(attr["value"])))
+    sim.logMsg("   Found GENERATION entity : " + entity_generation +
+               " - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in eon.entities_eond[entity_generation].attributes.get_dictionary() ]))
 
     pv = IeconPvDev(
         host=sim,
@@ -328,7 +357,7 @@ if entity_generation:
     pv.strictComfort = not useIslanding
     sm.addDevice(pv)
 
-    pvpc = IeconLivePvCtrl("pvctrl-" + pv.eond_name, pv, ctrl, sun, sim)
+    pvpc = IeconLivePvCtrl(entity_generation + "-ems", pv, ctrl, sun, sim)
     pvpc.useEventControl = useEC
     pvpc.perfectPredictions = usePP
     pvpc.strictComfort = not useIslanding

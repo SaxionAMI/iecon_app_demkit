@@ -78,7 +78,7 @@ def iecon_parse_spb_data_2_demkit(spb_data:dict) -> dict:
         if name == "POW":
             out["W-power.P"] = value
         elif name == "POW_L1":
-            out["W-power.L1"] = value     # TODO check if the name is correct for a phase power
+            out["W-power.L1"] = value
         elif name == "POW_L2":
             out["W-power.L2"] = value
         elif name == "POW_L3":
@@ -125,7 +125,7 @@ def iecon_parse_spb_data_2_demkit(spb_data:dict) -> dict:
         elif name == "FREQ":
             out["H-frequency.AC"] = value
 
-        # TODO Implement this values, what are the names in Demkit?
+        # Implement this values, what are the names in Demkit?
         elif name == "ENE_CNT_EXP":
             pass
         elif name == "ENE_CNT_EXP_L1":

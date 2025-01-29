@@ -21,7 +21,9 @@ import copy
 
 class MeterDev(LoadDev):	
 	def __init__(self,  name,  host, commodities = ['ELECTRICITY'], flowNode = None, phase = 1, controller = None):
+
 		LoadDev.__init__(self,  name,  None)
+
 		self.devtype = "Meter"
 		
 		self.host = host
@@ -99,19 +101,19 @@ class MeterDev(LoadDev):
 	def logStats(self, time):
 		self.lockState.acquire()
 		for c in self.commodities:
-			self.logValue('W-power.real.c.'+c,self.consumption[c].real)
-			self.logValue('Wh-energy.c.'+c, self.consumption[c].real / (3600.0 / self.timeBase))
+			self.logValue('POW', self.consumption[c].real, tags={"CTYPE": c.lower()})  # 'W-power.real.c.'+c
+			self.logValue('ENER', self.consumption[c].real / (3600.0 / self.timeBase), tags={"CTYPE": c.lower()})   # 'Wh-energy.c.'+c
 			if self.host.extendedLogging:
-				self.logValue("W-power.imag.c."+c, self.consumption[c].imag)
+				self.logValue("POW_REAC", self.consumption[c].imag, tags={"CTYPE": c.lower()})    # "W-power.imag.c."+c
 
 		if self.host.extendedLogging:
-			self.logValue("W-power-imported", self.imported.real) # Smart meter readings
-			self.logValue("W-power-exported", self.exported)
-			self.logValue("W-power-self-consumed", self.selfConsumption.real)
+			self.logValue("POW_IMP", self.imported.real) # Smart meter readings W-power-imported
+			self.logValue("POW_EXP", self.exported) # W-power-exported
+			self.logValue("POW_SELF_CONSUMP", self.selfConsumption.real) # W-power-self-consumed
 
-			self.logValue("Wh-energy-imported", self.imported / (3600.0 / self.timeBase)) # Smart meter readings
-			self.logValue("Wh-energy-exported", self.exported / (3600.0 / self.timeBase))
-			self.logValue("Wh-energy-self-consumed", self.selfConsumption / (3600.0 / self.timeBase))
+			self.logValue("ENER_IMP", self.imported / (3600.0 / self.timeBase)) # Smart meter readings Wh-energy-imported
+			self.logValue("ENER_EXP", self.exported / (3600.0 / self.timeBase)) # Wh-energy-exported
+			self.logValue("ENER_SELF_CONSUMP", self.selfConsumption / (3600.0 / self.timeBase)) # Wh-energy-self-consumed
 
 			# self.logValue("M-costs-cumulative", self.costs + self.costsConnectionInterval)
 

@@ -30,7 +30,7 @@ class IeconPvDev(CurtDev):
             reader=None,
     ):
 
-        CurtDev.__init__(self, eond_name, host, influx, reader)
+        CurtDev.__init__(self, eond_name + "-dev", host, influx, reader)
 
         self.devtype = "Curtailable"
 
@@ -51,48 +51,38 @@ class IeconPvDev(CurtDev):
         )
 
         # InfluxDB extra measurement tags -------------------------------------------------------------------
-        # If EON is defined, the data will be injected into the EoN InfluxDB Measurement s
-        self.infuxTagsExtraLog = {"EON": self.eon_name, "EOND": self.eond_name}
+        self.log_db_tags_extra = {"EON": self.eon_name, "EOND": self.eond_name}
         if self.device.attributes.get_value("ETYPE"):
-            self.infuxTagsExtraLog["ETYPE"] = self.device.attributes.get_value("ETYPE")
+            self.log_db_tags_extra["ETYPE"] = self.device.attributes.get_value("ETYPE")
         if self.device.attributes.get_value("CTYPE"):
-            self.infuxTagsExtraLog["CTYPE"] = self.device.attributes.get_value("CTYPE")
+            self.log_db_tags_extra["CTYPE"] = self.device.attributes.get_value("CTYPE")
         if self.device.attributes.get_value("CTYPEC"):
-            self.infuxTagsExtraLog["CTYPEC"] = self.device.attributes.get_value("CTYPEC")
+            self.log_db_tags_extra["CTYPEC"] = self.device.attributes.get_value("CTYPEC")
 
-        # Callback function registration
-        # self.device.callback_data = self._spb_dev_data  # To display the data received ( Commented on deployment )
 
         self._data = dict()     # Local storage of device data
 
         # If using IECON InfluxDB, use specific IECON InfluxDB readers
         if self.host.db.__class__.__name__ == "IeconInfluxDB":
-            self.reader = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name, commodity="electricity")
-            self.readerReactive = IeconInfluxDBReader(host=host, eon_name=eon_name, eond_name=eond_name, field_name="POW_REAC", commodity="electricity")  # Reactive power (imaginary)
+            self.reader = IeconInfluxDBReader(host=host, db_measurement=eon_name, entity_name=eond_name, commodity="electricity")
+            self.readerReactive = IeconInfluxDBReader(host=host, db_measurement=eon_name, entity_name=eond_name, field_name="POW_REAC", commodity="electricity")  # Reactive power (imaginary)
 
-    def _spb_dev_data(self, msg):
+        # Set DATA POW callback to receive the values. We store them in the list and calculate the average
+        self._temp_data_pow = []  # Array to store the data
+        # self.device.data.set_value(name="POW", value=0, callback_on_change=self._callback_data_pow)
+        self.device.data["POW"].callback_on_change = self._callback_data_pow
+
+    def _callback_data_pow(self, data):
         """
-        Device callback on new data
-
-        This function is called everytime that the device sends data
-
-        Example of msg data:
-
-        {"timestamp":"1727187928026","metrics":[{"name":"POW","timestamp":"1727187928026","datatype":10,"doubleValue":117.5999984741211,"value":117.5999984741211},{"name":"POW_APP","timestamp":"1727187928026","datatype":10,"doubleValue":197.10000610351562,"value":197.10000610351562},{"name":"POW_REAC","timestamp":"1727187928026","datatype":10,"doubleValue":-158.1999969482422,"value":-158.1999969482422},{"name":"CURR","timestamp":"1727187928026","datatype":10,"doubleValue":0.8579999804496765,"value":0.8579999804496765}],"seq":"79"}
-
+        Callback executed evertime that a POW value is received.
         Args:
-            msg: spB data message dictionary
+            data: current pow value
 
         Returns:
-
         """
+        # Store the data into the temp list
+        self._temp_data_pow.append(data)
 
-        # self.logMsg("%s - DATA received - %s" % (self.device.spb_eon_name, msg))
-
-        # Convert the spB data message into demkit format and update the values in _data
-        self._data.update(iecon_parse_spb_data_2_demkit(msg))
-
-        pass
 
     def preTick(self, time, deltatime=0):
 
@@ -101,28 +91,22 @@ class IeconPvDev(CurtDev):
 
         if (self.host.time() - self.lastUpdate) > self.updateInterval:
 
-            # Check if device is online
-            if self.device.is_alive():
+            # Check if data has been received
+            if len(self._temp_data_pow) > 0:
 
                 # Get the data from the device
                 # NOTE: the value returned is the last one. You can check timestamp property to validate value.
-                value = float(self.device.data["POW"].value)
-                timestamp = int(self.device.data["POW"].timestamp)
-
-                # FIX - Some inverters may not send data if generation is zero, so if data is too old, force to zero.
-                # LOQIO logic - if data doesn't change, they don't send a data package.
-                if (self.host.time() - (timestamp/1000)) > 300:     # If more than 5 min no data, force power to zero.
-                    value = 0
+                value = float(sum(self._temp_data_pow)) / len(self._temp_data_pow)  # Get the average over the last values
+                self._temp_data_pow = []  # Reset the values
 
                 # Update consumption
                 self.consumption['ELECTRICITY'] = complex(value, 0.0)
 
                 # If all succeeded:
                 self.lastUpdate = self.host.time()
+
             else:
-                # TODO - Any action if device is disconnected?
                 self.consumption['ELECTRICITY'] = complex(0.0, 0.0)
-                # self.logWarning("%s - IECON EoND is offline, power set to zero! " % self.device.entity_name)
 
         self.lockState.release()
         return

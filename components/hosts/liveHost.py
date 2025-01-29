@@ -19,9 +19,12 @@ import datetime
 
 class LiveHost(Host):
 	def __init__(self, name="host"):
+
 		self.liveOperation = True
 
 		Host.__init__(self, name)
+
+		self.type = "host-live"
 
 		self.liveOperation = True
 		self.useThreads = True

@@ -27,7 +27,9 @@ from queue import *
 
 class Core:
 	def __init__(self, name):
+
 		self.name = name
+		self.type = "core"
 
 		#should contain a list with all devices, controllers etc to distribute ticks
 		self.entities = []
@@ -84,24 +86,56 @@ class Core:
 
 		self.quitOnError = True
 
+		# For DB loging
+		self.log_db_measurement = self.db.database_measurement
+		self.log_db_tags_extra = {}
+
 
 # Logging functions
-	def logValue(self,  measurement,  tags,  values, time=None, deltatime=None):
+	def logValue(self, measurement, value, time=None, deltatime=None, tags_extra=None):
+		"""
+			Save a measurement point into InfluxDB - - IECON Forma
+		Args:
+			measurement:		measurement name
+			value  				value
+			time: 				timestamp
+			deltatime: 			deltatime
+		"""
 		if self.writeData:
+
 			if deltatime is None:
 				deltatime = self.getDeltatime()
 			if time is None:
 				time = self.time()
 
-			self.db.appendValue(measurement,  tags,  values, time, deltatime)
+			# Point tagas
+			tags = {'ENAME': self.name,  # Entity Name
+					"DEMKTYPE": self.type  # Demkit component type
+					}
 
-	def logValuePrepared(self, data, time=None, deltatime=None):
-		if deltatime is None:
-			deltatime = self.getDeltatime()
-		if time is None:
-			time = self.time()
+			# Add any extra tags
+			for k, v in self.log_db_tags_extra.items():
+				tags[k] = v
 
-		self.db.appendValuePrepared(data, time, deltatime)
+			# Add other tags - Typically used to override things
+			if tags_extra is not None:
+				for k, v in tags_extra.items():
+					tags[k] = v
+
+			# value
+			values = {measurement: value}
+
+			# Save the data point
+			self.db.appendValue(measurement=self.log_db_measurement, tags=tags, values=values, time=time, deltatime=deltatime)
+
+	# NOTE - We should not use logValuePrepared, instead use the tags_extra to override things.
+	# def logValuePrepared(self, data, time=None, deltatime=None):
+	# 	if deltatime is None:
+	# 		deltatime = self.getDeltatime()
+	# 	if time is None:
+	# 		time = self.time()
+	#
+	# 	self.db.appendValuePrepared(data, time, deltatime)
 
 	def logCsvLine(self, file, line):
 		util.helpers.writeCsvLine(file, line)

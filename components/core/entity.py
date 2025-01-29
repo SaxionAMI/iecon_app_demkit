@@ -18,138 +18,174 @@ from util.persistence import Persistence
 import threading
 
 class Entity:
-	def __init__(self,  name,  host):
-		self.host = host
-		self.name = name
 
-		self.persistence = None
+    def __init__(self, name, host):
 
-		if self.host != None:
-			self.host.addEntity(self)
+        self.host = host  # Simulation host
+        self.name = name
 
-			# Persistent data storage for recovery on a crash in demo sites
-			if self.host.enablePersistence:
-				self.persistence = Persistence(self, self.host)
+        self.persistence = None
 
-		self.type = "entity"
+        if self.host != None:
+            self.host.addEntity(self)
 
-		# ticket callbacks
-		self.ticketCallback = {}
+            # Persistent data storage for recovery on a crash in demo sites
+            if self.host.enablePersistence:
+                self.persistence = Persistence(self, self.host)
 
-		#params
-		self.timeBase = 60
+        self.type = "entity"
 
-		# Locking
-		self.locks = {}
-		self.accessLock = threading.Lock()
+        # ticket callbacks
+        self.ticketCallback = {}
 
-	def preTick(self, time, deltatime=0):
-		pass
+        #params
+        self.timeBase = 60
 
-	def startup(self):
-		pass
-		
-	def shutdown(self):
-		pass
+        #For DB loging
+        if hasattr(host, "log_db_measurement"):
+            self.log_db_measurement = self.host.log_db_measurement
+        else:
+            self.log_db_measurement = "ems-demkit"
+        self.log_db_tags_extra = {}
 
-	def logStats(self, time):
-		pass
+        # Locking
+        self.locks = {}
+        self.accessLock = threading.Lock()
 
-	def requestTickets(self, time):
-		self.ticketCallback.clear()
+    def preTick(self, time, deltatime=0):
+        pass
 
-	def registerTicket(self, number, func, register=True):
-		if number not in self.ticketCallback:
-			self.ticketCallback[number] = func
-			if register:
-				self.host.registerTicket(number)
+    def startup(self):
+        pass
 
-	def announceTicket(self, time, number):
-		if number in self.ticketCallback:
-			func = self.ticketCallback.pop(number)
-			getattr(self, func)(time, number)
+    def shutdown(self):
+        pass
 
+    def logStats(self, time):
+        pass
 
-	def logValue(self, measurement,  value, time=None, deltatime=None):
-		tags = {'name':self.name}
-		values = {measurement:value}
-		self.host.logValue(self.type,  tags,  values, time, deltatime)
+    def requestTickets(self, time):
+        self.ticketCallback.clear()
 
-	def storeState(self):
-		try:
-			if self.persistence is not None:
-				self.accessLock.acquire()
-				self.persistence.save()
-				self.accessLock.release()
-		except:
-			try:
-				self.accessLock.release()
-			except:
-				pass
-			pass
+    def registerTicket(self, number, func, register=True):
+        if number not in self.ticketCallback:
+            self.ticketCallback[number] = func
+            if register:
+                self.host.registerTicket(number)
 
-	def restoreState(self):
-		try:
-			if self.persistence is not None:
-				self.accessLock.acquire()
-				self.persistence.load()
-				self.accessLock.release()
-		except:
-			try:
-				self.accessLock.release()
-			except:
-				pass
-			pass
+    def announceTicket(self, time, number):
+        if number in self.ticketCallback:
+            func = self.ticketCallback.pop(number)
+            getattr(self, func)(time, number)
 
+    def logValue(self, measurement, value, time=None, deltatime=None, tags=None):
+        """
+			Save values into the Database - IECON Format
+		Args:
+			measurement: 	Measurement name
+			value: 			Measurement value
+			time: 			Time
+			deltatime: 		Delta Time
+			tags:			Extra tags for the data point. They may overwrite already set tags.
+		"""
 
-	def logMsg(self, msg):
-		self.host.logMsg("["+self.name+"] "+msg)
+        if deltatime is None:
+            deltatime = self.host.getDeltatime()
+        if time is None:
+            time = self.host.time()
 
-	def logWarning(self, warning):
-		self.host.logWarning("["+self.name+"] "+warning)
+        # Point tags
+        _tags = {'ENAME': self.name,  # Entity Name
+                 "DEMKTYPE": self.type  # Demkit component type
+                 }
 
-	def logError(self, error):
-		self.host.logError("["+self.name+"] "+error)
+        # add any extra tags
+        for k, v in self.log_db_tags_extra.items():
+            _tags[k] = v
 
-	def logDebug(self, msg):
-		self.host.logDebug("["+self.name+"] "+msg)
+        # If extra tags are passed
+        if tags is not None:
+            for k, v in tags.items():
+                _tags[k] = v
 
+        # Data point
+        values = {measurement: value}
 
-# Threading functions
-	def acquireLock(self, var, obj=None, blocking=True, timeout=None):
-		return self.host.acquireLock(vam, obj, blocking, timeout)
+        # Save the data point
+        self.host.db.appendValue(measurement=self.log_db_measurement,
+                                 tags=_tags, values=values, time=time, deltatime=deltatime)
 
-	def releaseLock(self, var, obj=None, timeout=None):
-		return self.host.releaseLock(var, obj, timeout)
+    def storeState(self):
+        try:
+            if self.persistence is not None:
+                self.accessLock.acquire()
+                self.persistence.save()
+                self.accessLock.release()
+        except:
+            try:
+                self.accessLock.release()
+            except:
+                pass
+            pass
 
-	def getLock(self, var, obj=None, timeout=None):
-		return self.host.getLock(var, obj, timeout)
+    def restoreState(self):
+        try:
+            if self.persistence is not None:
+                self.accessLock.acquire()
+                self.persistence.load()
+                self.accessLock.release()
+        except:
+            try:
+                self.accessLock.release()
+            except:
+                pass
+            pass
 
-	def acquireNamedLock(self, name, obj=None, blocking=True, timeout=None):
-		return self.host.acquireNamedLock(name, obj, blocking, timeout)
+    def logMsg(self, msg):
+        self.host.logMsg("[" + self.name + "] " + msg)
 
-	def releaseNamedLock(self, name, obj=None, timeout=None):
-		return self.host.releaseNamedLock(name, obj, timeout)
+    def logWarning(self, warning):
+        self.host.logWarning("[" + self.name + "] " + warning)
 
-	def getNamedLock(self, name, obj=None, timeout=None):
-		return self.host.getNamedLock(name, obj, timeout)
+    def logError(self, error):
+        self.host.logError("[" + self.name + "] " + error)
 
-	def runInThread(self, func, *args):
-		return self.host.runInThread(self, func, *args)
+    def logDebug(self, msg):
+        self.host.logDebug("[" + self.name + "] " + msg)
 
+    # Threading functions
+    def acquireLock(self, var, obj=None, blocking=True, timeout=None):
+        return self.host.acquireLock(vam, obj, blocking, timeout)
 
+    def releaseLock(self, var, obj=None, timeout=None):
+        return self.host.releaseLock(var, obj, timeout)
 
-	def zCall(self, receivers, func, *args):
-		return self.host.zCall(receivers, func, *args)
-		
-	def zCast(self, receivers, func, *args):
-		self.host.zCast(receivers, func, *args)
-		
-	def zSet(self, receivers, var, val):
-		self.host.zSet(receivers, var, val)
-		
-	def zGet(self, receivers, var):
-		return self.host.zGet(receivers, var)
+    def getLock(self, var, obj=None, timeout=None):
+        return self.host.getLock(var, obj, timeout)
 
-	def zRunInThread(self, receivers, func, *args):
-		return self.host.zRunInThread(receivers, func, *args)
+    def acquireNamedLock(self, name, obj=None, blocking=True, timeout=None):
+        return self.host.acquireNamedLock(name, obj, blocking, timeout)
+
+    def releaseNamedLock(self, name, obj=None, timeout=None):
+        return self.host.releaseNamedLock(name, obj, timeout)
+
+    def getNamedLock(self, name, obj=None, timeout=None):
+        return self.host.getNamedLock(name, obj, timeout)
+
+    def runInThread(self, func, *args):
+        return self.host.runInThread(self, func, *args)
+
+    def zCall(self, receivers, func, *args):
+        return self.host.zCall(receivers, func, *args)
+
+    def zCast(self, receivers, func, *args):
+        self.host.zCast(receivers, func, *args)
+
+    def zSet(self, receivers, var, val):
+        self.host.zSet(receivers, var, val)
+
+    def zGet(self, receivers, var):
+        return self.host.zGet(receivers, var)
+
+    def zRunInThread(self, receivers, func, *args):
+        return self.host.zRunInThread(receivers, func, *args)

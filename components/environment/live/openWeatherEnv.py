@@ -55,6 +55,9 @@ class OpenWeatherEnv(WeatherEnv):
 			"winddirection": "deg-wind.direction"
 		}
 
+		# Extra DB Log Tags
+		self.log_db_tags_extra["ETYPE"] = "weather-provider-forecast"	# Weather information provider with forecast
+
 	def startup(self):
 		self.initializeReaders()
 
@@ -79,7 +82,7 @@ class OpenWeatherEnv(WeatherEnv):
 		if (self.host.time() - self.lastUpdate)  > self.updateInterval:
 			try:
 				url = "http://api.openweathermap.org/data/2.5/weather?lat="+str(self.latitude)+"&lon="+str(self.longitude)+"&units=metric&APPID="+self.apiKey
-				print(url)
+				# print(url)
 				r = requests.get(url)
 				if r.status_code != 200:
 					self.logWarning("Could not connect to OpenWeatherMap. Errorcode: "+str(r.status_code)+ "\t\t" + r.text)

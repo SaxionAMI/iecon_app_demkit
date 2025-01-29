@@ -25,11 +25,12 @@ class IeconInfluxDB(InfluxDB):
 
         super().__init__(host)  # Initialize the upper class
 
-        self.spb_domain = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")  # Get the domain
-        self.database = self.spb_domain		# spB IECON database is equal to spB Domain
+        # InfluxDB specific modifications
+        self.database               = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")  # Get the domain
+        self.database_measurement   = "ems-demkit-" + self.database  # Default DB bucket measurement name - Entity data will be stored here.
 
-        # spB EoN identification for DEMKIT
-        self.eon_name = "emsDemkit-" + self.spb_domain
+        # Host update
+        self.host.log_db_measurement = self.database_measurement     # Update the default bucket measurement
 
         self.host.logDebug("[IeconInfluxDB.init] " + self.database)
 
@@ -62,11 +63,7 @@ class IeconInfluxDB(InfluxDB):
         s += timestr
         s += '\n'
 
-        # self.host.logDebug("[InfluxDB.appendValue] " + s)
-
-        # -- IECON influxdb data format Conversion ----------------------------------------------
-        s = self._db_demkit_data_2_iecon(s)  # convert data
-        # self.host.logDebug("    " + s)
+        self.host.logDebug("[InfluxDB.appendValue        ] " + s.rstrip("\n"))
 
         self.data.append(s)
 
@@ -81,104 +78,9 @@ class IeconInfluxDB(InfluxDB):
             timestr += "000"
         db_data_line = "%s%s %s" % (self.prefix, data, timestr)
 
-        # self.host.logDebug("[InfluxDB.appendValuePrepared] " + dataToBeAdded)
-
-        # -- IECON influxdb data format Conversion ----------------------------------------------
-        db_data_line = self._db_demkit_data_2_iecon(db_data_line)     # convert data
-
-        # self.host.logDebug("[InfluxDB.appendValuePrepared] " + db_data_line)
+        self.host.logDebug("[InfluxDB.appendValuePrepared] " + db_data_line)
 
         self.data.append(db_data_line)
-
-    def _db_demkit_data_2_iecon(self, data_line: str) -> str:
-        """
-        Convert an Influxdb data line in Demkit format, to IECON structure
-
-        Line example:
-        controllers,ctrltype=LoadCtrl,name=loadctrl-totaalverbruik-16eda211b788 W-power.realized.imag.c.ELECTRICITY=0.0 1727641800012000000
-
-        Args:
-            data_line: input data line demkit
-
-        Returns: influxdb iecon data line converted
-        """
-
-        try:
-
-            fields = data_line.split(" ")
-
-            time = fields[2]  # Time value
-
-            # Extract tags
-            tags = dict()
-            for index, item in enumerate(fields[0].split(",")):
-
-                if index == 0:  # We skip first item
-                    continue
-
-                key, value = item.split("=")
-
-                # __type ( ctrltype, devtype, ... ) conversion to ETYPE and ETYPEC
-                if key.endswith("type"):
-                    tags["ETYPEC"] = key.replace("type", "")
-                    value = "demkit-" + value.lower()
-                    key = "ETYPE"
-
-                tags[key] = value
-
-            # CHECK NAME must be included as tags, otherwise we do not send the line
-            if "name" not in tags.keys():
-                self.host.logWarning("[IeconInfluxDB._db_demkit_data_2_iecon] Missing name? " + str(data_line))
-                return ""
-
-            # FIELD NAME modifications ------------------------------
-            field_name, field_value = fields[1].split("=")
-
-            # Extract commodity from name ( if present )
-            if ".c." in field_name:
-                field_name, commmodity = field_name.split(".c.")
-                tags["CTYPE"] = commmodity.lower()     # Save it into lower
-
-            # FIELD NAME Convert data to IECON format
-            if True:
-
-                # FIELD NAME .plan - remove and prefix
-                if ".plan" in field_name:
-                    field_name = "forecast." + field_name.replace(".plan", "")
-                # FIELD NAME .realized - remove and prefix
-                if ".realized" in field_name:
-                    field_name = "realized." + field_name.replace(".realized", "")
-
-                field_name = field_name.replace("W-power.real", "POW")
-                field_name = field_name.replace("W-power.imag", "POW_REAC")
-                field_name = field_name.replace("Wh-energy.imag", "ENE")
-                # field_name = field_name.replace("Wm2-irradiation.GHI", "GHI")  # for now use the original ones, otherwise we need to modify original code
-                # field_name = field_name.replace("Wm2-irradiation.DNI", "DNI")
-                # field_name = field_name.replace("Wm2-irradiation.DHI", "DHI")
-
-            # ENAME - Entity name from "name"
-            tags["ENAME"] = tags["name"]
-            tags.pop("name")
-
-            # Generate tag str
-            tags_str = ""
-            for k, v in tags.items():
-                tags_str += ",%s=%s" % (k, v)
-
-            # If tags contain EON tag, the data belongs to an spb entity, we should inject the values in the entity measurement=spb_eon, ENAME=spb_eond
-            if tags.get("EON", None) is None:
-                _db_measurement = self.eon_name  # Demkit EoN (Default)
-            else:
-                _db_measurement = tags["EON"]  # EoN InfluxDB measurement
-
-            # Generate the InfluxDB data point IECON format
-            res = "%s%s %s=%s %s" % (_db_measurement, tags_str, field_name, field_value, time)
-
-            return res
-
-        except Exception as e:
-            self.host.logError("[IeconInfluxDB._db_demkit_data_2_iecon] exception " + str(e))
-            return ""
 
 
 class IeconInfluxDBReader(Reader):
@@ -189,8 +91,8 @@ class IeconInfluxDBReader(Reader):
     def __init__(
             self,
             host,
-            eon_name: str,
-            eond_name: str,
+            db_measurement: str,
+            entity_name: str,
             field_name="POW",
             commodity=None,
             aggregation="mean",
@@ -203,8 +105,8 @@ class IeconInfluxDBReader(Reader):
         Args:
             host: Simulation host
             db: database
-            eon_name:
-            eond_name:
+            db_measurement:
+            entity_name:
             field_name:
             commodity:
             aggregation:
@@ -225,9 +127,9 @@ class IeconInfluxDBReader(Reader):
         else:
             self.db = db
 
-        self.eon_name = eon_name
-        self.eond_name = eond_name
-        self.eond_commodity = commodity
+        self.db_measurement = db_measurement
+        self.entity_name = entity_name
+        self.entity_commodity = commodity
 
         self.field_name = field_name
 
@@ -238,7 +140,6 @@ class IeconInfluxDBReader(Reader):
 
         self.raw = raw
 
-        self.field_name = field_name
 
     def retrieveValues(self, startTime, endTime=None, field_name=None, tags=None):
 
@@ -248,11 +149,11 @@ class IeconInfluxDBReader(Reader):
             field_name = self.field_name
 
         # Condition query
-        condition = ' (\"ENAME\" = \'' + self.eond_name + '\') AND '
-        if self.eond_commodity:
-            condition += '(\"CTYPE\" = \'' + self.eond_commodity + '\') AND '
+        condition = ' (\"ENAME\" = \'' + self.entity_name + '\') AND '
+        if self.entity_commodity:
+            condition += '(\"CTYPE\" = \'' + self.entity_commodity + '\') AND '
 
-        query = 'SELECT ' + self.aggregation + '(\"' + field_name + '\") FROM \"' + self.eon_name + '\"' \
+        query = 'SELECT ' + self.aggregation + '(\"' + field_name + '\") FROM \"' + self.db_measurement + '\"' \
                 + ' WHERE ' + condition \
                 + 'time >= ' + str(startTime) + '000000000 AND time < ' + str(endTime) + '000000000' \
                 + ' GROUP BY time(' + str(self.timeBase) + 's) fill(previous) ORDER BY time ASC'  # LIMIT '+str(l)
