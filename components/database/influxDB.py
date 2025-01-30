@@ -134,7 +134,8 @@ class InfluxDB():
 	def writeToDatabase(self, data):
 
 		result = True
-		self.host.logMsg(f"[InfluxDB] Writing to database {self.database}")
+
+		# self.host.logMsg(f"[InfluxDB] Writing to database {self.database}")
 
 		toSend = ("\n".join(data) + "\n")
 

@@ -46,7 +46,7 @@ class IeconLoadCtrl(LoadCtrl):
 
 		"""
 
-		self.logDebug("IeconLoadCtrl - Saving planning - " + self.name)
+		self.logDebug("IeconLoadCtrl - Saving planning - ")
 
 		# Call parent method
 		result = LoadCtrl.endSynchronizedPlanning(self, signal)

@@ -51,6 +51,7 @@ class LiveHost(Host):
 		old = old - (old % self.timeBase)
 
 		self.logMsg("Simulation loop")
+
 		while True:
 
 			now = int(tm.time())
@@ -58,7 +59,8 @@ class LiveHost(Host):
 			if now - old >= self.tickInterval:
 
 				self.currentTime = now
-				self.logMsg("Simulating at time: " + self.timeHumanReadable())
+				# self.logMsg("Simulating at time: " + self.timeHumanReadable())
+				print(".", end="", flush=True)
 
 				self.timeTick(now)
 				old = now

@@ -232,7 +232,7 @@ class LoadCtrl(DevCtrl):
 #### EVENT BASED PREDICTION UPDATE
 	def updatePrediction(self):
 
-		self.host.logDebug("[loadCtrl] updatePrediction")
+		self.host.logDebug("[loadCtrl] updatePrediction - + " + self.name)
 
 		self.updatingPrediction = True
 		if self.useEventControl and not self.perfectPredictions:

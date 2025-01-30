@@ -46,7 +46,7 @@ class IeconLivePvCtrl(LivePvCtrl):
 
 		"""
 
-		self.logDebug("IeconLivePvCtrl - Saving planning - " + self.name)
+		self.logDebug("IeconLivePvCtrl - Saving planning - ")
 
 		# Call parent method
 		result = LivePvCtrl.endSynchronizedPlanning(self, signal)
