@@ -162,9 +162,9 @@ def iecon_parse_spb_data_2_demkit(spb_data:dict) -> dict:
             pass
 
 
-        elif name == "ENER_CNT_IMP":
+        elif name == "ENE_CNT_IMP":
             pass
-        elif name == "ENER_CNT_EXP":
+        elif name == "ENE_CNT_EXP":
             pass
 
         elif name == "POW_APP_L1":

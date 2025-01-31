@@ -24,46 +24,14 @@ class IeconLoadCtrl(LoadCtrl):
 
 		LoadCtrl.__init__(self,  name,  dev,  ctrl,  host)
 
-		# InfluxDB Modifications -------------------------------------------------------------------
-		self.log_db_tags_extra["EON"] = dev.eon_name	# Edge entity
-		self.log_db_tags_extra["EOND"] = name			# Device name - In this case the EMS Controller entity
-		self.log_db_tags_extra["ETYPE"] = "forecast-provider"	# Entity type
-		self.log_db_tags_extra["ESTYPE"] = dev.eond_name		# Entity SubType - In this case the device name
+		# InfluxDB tags - IECON-based extra tags
+		self.log_db_tags_extra["EON"] = self.dev.eon_name		# Edge entity
+		self.log_db_tags_extra["EOND"] = self.name				# Device name - In this case the EMS Controller entity
+		self.log_db_tags_extra["ETYPE"] = "demkit-dctrl"		# Entity type
 
-		# Copy some DEV tags, if existing
-		if "CTYPE" in dev.log_db_tags_extra.keys():
-			self.log_db_tags_extra["CTYPE"] = dev.log_db_tags_extra.get("CTYPE")
+		# IECON - Inherit the CTYPE and CTYPEC from self.dev
+		if "CTYPE" in self.dev.log_db_tags_extra.keys():
+			self.log_db_tags_extra["CTYPE"] = self.dev.log_db_tags_extra.get("CTYPE")
 		if "CTYPEC" in dev.log_db_tags_extra.keys():
-			self.log_db_tags_extra["CTYPEC"] = dev.log_db_tags_extra.get("CTYPEC")
-
-	# Override base method to enable the backup of planning ( predictions ) into the DB
-	def endSynchronizedPlanning(self, signal):
-		"""
-			Overwrite base method to allow to store the final planning on the device.
-		Args:
-			signal:
-		Returns:
-
-		"""
-
-		self.logDebug("IeconLoadCtrl - Saving planning - ")
-
-		# Call parent method
-		result = LoadCtrl.endSynchronizedPlanning(self, signal)
-
-		# Log the data also in the device
-		#
-		# # Debug - log when predictions have been generated
-		# self.dev.logValue("forecast.event", 1)
-		#
-		# # Save the planning for the device in the database.
-		# for c in signal.commodities:
-		# 	for i in range(0, signal.planHorizon):
-		# 		self.dev.logValue("forecast.POW", self.plan[c][int(signal.time + i * signal.timeBase)].real, int(signal.time + i * signal.timeBase))
-		# 		if self.host.extendedLogging:
-		# 			self.dev.logValue("forecast.POW_REAC", self.plan[c][int(signal.time + i * signal.timeBase)].imag, int(signal.time + i * signal.timeBase))
-
-		# Return the parent method results
-		return result
-
+			self.log_db_tags_extra["CTYPEC"] = self.dev.log_db_tags_extra.get("CTYPEC")
 

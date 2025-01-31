@@ -50,8 +50,7 @@ class IeconLoadDev(LoadDev):
 
         # InfluxDB extra measurement tags -------------------------------------------------------------------
         self.log_db_tags_extra = {"EON": self.eon_name, "EOND": self.eond_name}
-        if self.device.attributes.get_value("ETYPE"):
-            self.log_db_tags_extra["ETYPE"] = self.device.attributes.get_value("ETYPE")
+        self.log_db_tags_extra["ETYPE"] = "demkit-dev"
         if self.device.attributes.get_value("CTYPE"):
             self.log_db_tags_extra["CTYPE"] = self.device.attributes.get_value("CTYPE")
         if self.device.attributes.get_value("CTYPEC"):
@@ -74,6 +73,7 @@ class IeconLoadDev(LoadDev):
 
         Returns:
         """
+
         # Store the data into the temp list
         self._temp_data_pow.append(data)
 
@@ -107,6 +107,16 @@ class IeconLoadDev(LoadDev):
     # This is your chance to log data
     def logStats(self, time):
 
-        # RAW device data is being stored automatically by the IECON framework
-        # We don't need to store any extra data for this device
-        return
+        self.lockState.acquire()
+        for c in self.commodities:
+            self.logValue('POW', self.consumption[c].real, tags={"CTYPE": c.lower()})  # 'W-power.real.c.'+c
+            self.logValue('ENE', self.consumption[c].real / (3600.0 / self.timeBase),
+                          tags={"CTYPE": c.lower()})  # 'Wh-energy.c.'+c
+            if self.host.extendedLogging:
+                self.logValue("POW_REAC", self.consumption[c].imag, tags={"CTYPE": c.lower()})  # "W-power.imag.c."+c
+
+        self.lockState.release()
+
+        # # RAW device data is being stored automatically by the IECON framework
+        # # We don't need to store any extra data for this device
+        # return

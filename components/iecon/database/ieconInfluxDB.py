@@ -63,7 +63,7 @@ class IeconInfluxDB(InfluxDB):
         s += timestr
         s += '\n'
 
-        # self.host.logDebug("[InfluxDB.appendValue        ] " + s.rstrip("\n"))
+        # self.host.logDebug("[InfluxDB.appendValue] " + s.rstrip("\n"))
 
         self.data.append(s)
 
@@ -158,12 +158,12 @@ class IeconInfluxDBReader(Reader):
                 + 'time >= ' + str(startTime) + '000000000 AND time < ' + str(endTime) + '000000000' \
                 + ' GROUP BY time(' + str(self.timeBase) + 's) fill(previous) ORDER BY time ASC'  # LIMIT '+str(l)
 
-        self.host.logDebug("[IeconInfluxdbReader].retrieveValues: %s _ %s , %s , %s" % (
-            datetime.datetime.fromtimestamp(startTime).isoformat(),
-            datetime.datetime.fromtimestamp(endTime).isoformat(),
-            self.db.database,
-            str(query))
-        )
+        # self.host.logDebug("[IeconInfluxdbReader].retrieveValues: %s _ %s , %s , %s" % (
+        #     datetime.datetime.fromtimestamp(startTime).isoformat(),
+        #     datetime.datetime.fromtimestamp(endTime).isoformat(),
+        #     self.db.database,
+        #     str(query))
+        # )
 
         try:
             r = self.getData(query, startTime, endTime)

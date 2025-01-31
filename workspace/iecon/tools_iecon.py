@@ -1,4 +1,3 @@
-
 # Host, required to control/coordinate the simulation itself
 from hosts.liveHost import LiveHost
 
@@ -40,7 +39,7 @@ def iecon_eon_provision_demkit_components(
         sun:                Sun object for PV predictions
     """
 
-    entities_detected = False   # Flag to mark if at least one entity was detected in the house. If not CTRL is removed
+    entities_detected = False  # Flag to mark if at least one entity was detected in the house. If not CTRL is removed
 
     spb_eon = spb_scada.entities_eon[spb_eon_name]  # Get the EoN object, to search over the devices
 
@@ -73,7 +72,7 @@ def iecon_eon_provision_demkit_components(
         },
     )
 
-    # ---- DEMKIT Registration of entities ------------------------------------
+    # ---- DEMKIT Registration of entities ----------------------------------------------------------------------------
 
     # ADDING A HEMS - add a controller if necessary
     if host.useCongestionPoints:
@@ -104,8 +103,10 @@ def iecon_eon_provision_demkit_components(
         ctrl.planInterval = int(24 * 3600 / host.ctrlTimeBase)
         ctrl.predefinedNextPlan = host.alignplan
 
-        # Force DB log values to be written in the EoN DB Measurement.
-        ctrl.log_db_measurement = spb_eon_name  # Force the data to be inserted at the DB measurement for the EoN
+        # InfluxDB tags - IECON based
+        ctrl.log_db_tags_extra["EON"] = spb_eon_name
+        ctrl.log_db_tags_extra["ETYPE"] = "demkit-gctrl"
+        # ctrl.log_db_measurement = spb_eon_name  # Force the data to be inserted at the DB measurement for the EoN
 
     # --- HOUSE METER ( supply point at DEMKIT )
     if entity_supply:
@@ -114,11 +115,18 @@ def iecon_eon_provision_demkit_components(
 
         # Print some information
         host.logMsg("   Found SUPPLY entity      : " + entity_supply +
-                   "\t - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in
-                                spb_eon.entities_eond[entity_supply].attributes.get_dictionary()]))
+                    "\t - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in
+                                   spb_eon.entities_eond[entity_supply].attributes.get_dictionary()]))
 
         # Virtual simulation device - This is the equivalent to the physical SUPPLY spB meter
         sm = MeterDev(name=entity_supply + "-ems-dev-virt", host=host)
+
+        # InfluxDB tags - Inherit IECON based tags, for visualizations
+        sm.log_db_tags_extra["EON"] = spb_eon_name
+        sm.log_db_tags_extra["EOND"] = entity_supply
+        sm.log_db_tags_extra["ETYPE"] = "demkit-dev"
+        sm.log_db_tags_extra["CTYPE"] = spb_eon.entities_eond[entity_supply].attributes.get_value("CTYPE")
+        sm.log_db_tags_extra["CTYPEC"] = spb_eon.entities_eond[entity_supply].attributes.get_value("CTYPEC")
 
     else:
         host.logWarning("   WARNING - This house doesn't have a SUPPLY entity")
@@ -130,8 +138,8 @@ def iecon_eon_provision_demkit_components(
 
         # Print some information
         host.logMsg("   Found CONSUMPTION entity : " + entity_consumption +
-                   "\t - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in
-                                spb_eon.entities_eond[entity_consumption].attributes.get_dictionary()]))
+                    "\t - " + str(["%s:%s" % (str(attr["name"]), str(attr["value"])) for attr in
+                                   spb_eon.entities_eond[entity_consumption].attributes.get_dictionary()]))
 
         # Device Entity
         load = IeconLoadDev(
@@ -143,6 +151,7 @@ def iecon_eon_provision_demkit_components(
         )
         load.timeBase = host.timeBase  # Timebase of the dataset, not the simulation!
         load.strictComfort = not host.useIslanding
+
         sm.addDevice(load)
 
         # Controller entity
@@ -152,12 +161,17 @@ def iecon_eon_provision_demkit_components(
             ctrl=ctrl,
             host=host
         )
-        loadctrl.log_db_measurement = spb_eon_name  # Force DB log values to be written in the EoN DB Measurement.
+
         loadctrl.perfectPredictions = host.usePP  # Use perfect predictions or not
         loadctrl.useEventControl = host.useEC  # Use event-based control
         loadctrl.timeBase = host.ctrlTimeBase  # TimeBase for controllers
         loadctrl.strictComfort = not host.useIslanding
         loadctrl.islanding = host.useIslanding
+
+        # InfluxDB tags - Inherit IECON based tags, for visualizations
+        loadctrl.log_db_tags_extra["EON"] = spb_eon_name
+        loadctrl.log_db_tags_extra["EOND"] = entity_consumption
+        # loadctrl.log_db_measurement = spb_eon_name  # Force DB log values to be written in the EoN DB Measurement.
 
     else:
         host.logWarning("   WARNING - This house doesn't have a CONSUMPTION entity")
@@ -165,7 +179,7 @@ def iecon_eon_provision_demkit_components(
     # --- PV ---- Solar panel based on provided data -----------------------------------------------
     if entity_generation:
 
-        entities_detected = True    # Mark entity detected
+        entities_detected = True  # Mark entity detected
 
         # print some info messages
         host.logMsg(
@@ -183,6 +197,7 @@ def iecon_eon_provision_demkit_components(
         )
         pv.timeBase = host.timeBase  # Timebase of the dataset, not the simulation!
         pv.strictComfort = not host.useIslanding
+
         sm.addDevice(pv)
 
         pvpc = IeconLivePvCtrl(
@@ -192,11 +207,16 @@ def iecon_eon_provision_demkit_components(
             sun=sun,
             host=host
         )
-        pvpc.log_db_measurement = spb_eon_name  # Force DB log values to be written in the EoN DB Measurement.
+
         pvpc.useEventControl = host.useEC
         pvpc.perfectPredictions = host.usePP
         pvpc.strictComfort = not host.useIslanding
         pvpc.islanding = host.useIslanding
+
+        # InfluxDB tags - Inherit IECON based tags, for visualizations
+        pvpc.log_db_tags_extra["EON"] = spb_eon_name
+        pvpc.log_db_tags_extra["EOND"] = entity_generation
+        # pvpc.log_db_measurement = spb_eon_name  # Force DB log values to be written in the EoN DB Measurement.
 
     else:
         host.logWarning("   WARNING - This house doesn't have a GENERATION entity")
@@ -205,4 +225,3 @@ def iecon_eon_provision_demkit_components(
     if not entities_detected:
         res = host.removeEntity(ctrl.name)
         host.logWarning("   WARNING - House controller removed from the simulation - " + str(res))
-

@@ -104,8 +104,9 @@ sim.latitude = 52.330271  # OLST COORDINATES, NL
 sim.longitude = 6.111991
 
 # Data logging
-sim.logDevices = False              # Enable log of device data
+sim.logDevices = True               # Enable log of device data
 sim.logControllers = True           # NOTE: Controllers do not log so much, keep this on True (default)!
+sim.logEnvironments = True          # IMPORTANT - Environments are use for PV model training, enabled should be on.
 sim.logFlow = False                 # Enable log of flow data
 sim.extendedLogging = False         # Enable extended logging
 sim.enableDebug = IECON_DEBUG_EN    # Enable debug information
@@ -153,10 +154,12 @@ sim.db = IeconInfluxDB(host=sim)
 # Settings for Weather services
 weather = OpenWeatherEnv("weather-openweather", sim)
 weather.apiKey = demCfg.get("openweather_api_key", "")
+weather.log_db_tags_extra["ETYPE"] = "demkit-weather"
 
 # Settings for Sun services
 sun = MetnoSunEnv("sun-forec-Metno", sim)
 sun.api_user_agent = demCfg.get("metno_api_user_agent", "")  # Get the user agent from the configuration file
+sun.log_db_tags_extra["ETYPE"] = "demkit-sun"
 
 # FIX for IECON specific InfluxDBReader, only if DB is IeconInfluxDB class.
 # SUN data is located under EoN=db.eon_name, EoND=Sun.name

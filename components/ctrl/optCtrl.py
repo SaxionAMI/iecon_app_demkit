@@ -147,21 +147,30 @@ class OptCtrl(Entity):
         if self.forwardLogging and self.host.logControllers:
             for c in signal.commodities:
                 for i in range(0, signal.planHorizon):
-                    self.logValue("W-power.plan.real.c." + c, self.plan[c][int(signal.time + i * signal.timeBase)].real,
-                                  int(signal.time + i * signal.timeBase))
+
+                    self.logValue("forecast.POW",  # "W-power.plan.real.c."+c
+                                  self.plan[c][int(signal.time + i * signal.timeBase)].real,
+                                  int(signal.time + i * signal.timeBase),
+                                  tags={"CTYPE": str(c).lower()})
                     if self.host.extendedLogging:
-                        self.logValue("W-power.plan.imag.c." + c,
+                        self.logValue("forecast.POW_REAC",  # "W-power.plan.imag.c."+c
                                       self.plan[c][int(signal.time + i * signal.timeBase)].imag,
-                                      int(signal.time + i * signal.timeBase))
+                                      int(signal.time + i * signal.timeBase),
+                                      tags={"CTYPE": str(c).lower()}
+                                      )
 
                     if self.useEventControl:
-                        self.logValue("W-power.realized.imag.c." + c,
-                                      self.realized[c][int(signal.time + i * signal.timeBase)].imag,
-                                      int(signal.time + i * signal.timeBase))
+                        self.logValue("realized.POW",  # "W-power.realized.real.c." + c
+                                      self.realized[c][int(signal.time + i * signal.timeBase)].real,
+                                      int(signal.time + i * signal.timeBase),
+                                      tags={"CTYPE": str(c).lower()}
+                                      )
                         if self.host.extendedLogging:
-                            self.logValue("W-power.realized.real.c." + c,
-                                          self.realized[c][int(signal.time + i * signal.timeBase)].real,
-                                          int(signal.time + i * signal.timeBase))
+                            self.logValue("realized.POW_REAC",  # "W-power.realized.imag.c." + c
+                                          self.realized[c][int(signal.time + i * signal.timeBase)].imag,
+                                          int(signal.time + i * signal.timeBase),
+                                          tags={"CTYPE": str(c).lower()}
+                                          )
 
         self.lastPlannedTime = signal.time + (signal.planHorizon - 1) * signal.timeBase
         self.planningTimestamp = self.host.time()
@@ -201,11 +210,17 @@ class OptCtrl(Entity):
                 self.plan[c][t] = self.planning[c][i]
 
                 if self.forwardLogging and self.host.logControllers:
-                    self.logValue("W-power.plan.real.c." + c, self.plan[c][int(time + i * self.timeBase)].real,
-                                  int(time + i * timeBase))
+
+                    self.logValue("forecast.POW",  # "W-power.plan.real.c."+c
+                                  self.plan[c][int(time + i * self.timeBase)].real,
+                                  int(time + i * timeBase),
+                                  tags={"CTYPE": str(c).lower()})
                     if self.host.extendedLogging:
-                        self.logValue("W-power.plan.imag.c." + c, self.plan[c][int(time + i * self.timeBase)].imag,
-                                      int(time + i * timeBase))
+                        self.logValue("forecast.POW_REAC",  # "W-power.plan.imag.c."+c
+                                      self.plan[c][int(time + i * self.timeBase)].imag,
+                                      int(time + i * timeBase),
+                                      tags={"CTYPE": str(c).lower()}
+                                      )
 
         # Synchronize all candidates profiles, should not be needed tho.
         for p in parents:

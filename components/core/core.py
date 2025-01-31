@@ -55,9 +55,9 @@ class Core:
 		#Stats Logging
 		self.logDevices = False
 		self.logControllers = False
+		self.logEnvironments = False
 		self.logFlow = False
 		self.logCosts = True
-
 
 		# Writing logs
 		self.writeMsg = False

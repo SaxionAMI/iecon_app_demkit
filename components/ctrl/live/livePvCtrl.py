@@ -66,6 +66,7 @@ class LivePvCtrl(LoadCtrl):
 				self.runInThread('trainModel')
 
 	def timeTick(self, time, deltatime=0):
+
 		LoadCtrl.timeTick(self, time)
 
 		# Retrain the model if it is too "old" (1 day now)
@@ -85,6 +86,9 @@ class LivePvCtrl(LoadCtrl):
 
 ### Training the model based on the historical data
 	def trainModel(self):
+
+		self.host.logDebug("[LivePVCtrl.trainModel] initialized")
+
 		self.lastModelTraining = self.host.time()
 
 		self.updateDeviceProperties()

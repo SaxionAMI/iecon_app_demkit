@@ -207,6 +207,9 @@ class MetnoSunEnv(SunEnv):
         try:
             # Retrieve the yr data
             url = "https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=" + str(self.latitude) + "&lon=" + str(self.longitude)
+
+            # self.host.logDebug("[MetnoSunEnv] retrieveData - " + url)
+
             r = requests.get(url, headers=user_agent)
 
             if r.status_code != 200:

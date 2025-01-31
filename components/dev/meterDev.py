@@ -102,10 +102,11 @@ class MeterDev(LoadDev):
 		pass
 			
 	def logStats(self, time):
+
 		self.lockState.acquire()
 		for c in self.commodities:
 			self.logValue('POW', self.consumption[c].real, tags={"CTYPE": c.lower()})  # 'W-power.real.c.'+c
-			self.logValue('ENER', self.consumption[c].real / (3600.0 / self.timeBase), tags={"CTYPE": c.lower()})   # 'Wh-energy.c.'+c
+			self.logValue('ENE', self.consumption[c].real / (3600.0 / self.timeBase), tags={"CTYPE": c.lower()})   # 'Wh-energy.c.'+c
 			if self.host.extendedLogging:
 				self.logValue("POW_REAC", self.consumption[c].imag, tags={"CTYPE": c.lower()})    # "W-power.imag.c."+c
 
@@ -114,9 +115,9 @@ class MeterDev(LoadDev):
 			self.logValue("POW_EXP", self.exported) # W-power-exported
 			self.logValue("POW_SELF_CONSUMP", self.selfConsumption.real) # W-power-self-consumed
 
-			self.logValue("ENER_IMP", self.imported / (3600.0 / self.timeBase)) # Smart meter readings Wh-energy-imported
-			self.logValue("ENER_EXP", self.exported / (3600.0 / self.timeBase)) # Wh-energy-exported
-			self.logValue("ENER_SELF_CONSUMP", self.selfConsumption / (3600.0 / self.timeBase)) # Wh-energy-self-consumed
+			self.logValue("ENE_IMP", self.imported / (3600.0 / self.timeBase)) # Smart meter readings Wh-energy-imported
+			self.logValue("ENE_EXP", self.exported / (3600.0 / self.timeBase)) # Wh-energy-exported
+			self.logValue("ENE_SELF_CONSUMP", self.selfConsumption / (3600.0 / self.timeBase)) # Wh-energy-self-consumed
 
 			# self.logValue("M-costs-cumulative", self.costs + self.costsConnectionInterval)
 
