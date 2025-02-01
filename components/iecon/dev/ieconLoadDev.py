@@ -42,6 +42,12 @@ class IeconLoadDev(LoadDev):
 
         self._data = dict()     # Local storage of device data
 
+        # REALTIME DATA BUFFER - Temp buffer for data
+        self._temp_data_pow = []  # Array to store the device real time data points
+        self._last_pow_avg = 0  # Last calculated average - LOQIO IX FILTER
+        self._last_pow_timestamp = 0  # Last calculated average timestamp
+        self._TIMEOUT_NODATA = 300  # Timeout value if no data is received, avg value will be zeroed
+
         # Subscribe to the device data
         self.device = self._scada.get_edge_device(
             eon_name=self.eon_name,
@@ -62,7 +68,6 @@ class IeconLoadDev(LoadDev):
             self.readerReactive = IeconInfluxDBReader(host=host, db_measurement=eon_name, entity_name=eond_name, field_name="POW_REAC", commodity="electricity")  # Reactive power (imaginary)
 
         # Set DATA POW callback to receive the values. We store them in the list and calculate the average
-        self._temp_data_pow = []  # Array to store the data
         self.device.data["POW"].callback_on_change = self._callback_data_pow
 
     def _callback_data_pow(self, data):
@@ -83,23 +88,26 @@ class IeconLoadDev(LoadDev):
         self.lockState.acquire()
         if (self.host.time() - self.lastUpdate) > self.updateInterval:
 
-            # Check if data has been received
+            # Check if data has been received - Calculate average
             if len(self._temp_data_pow) > 0:
+                self._last_pow_avg = (float(sum(self._temp_data_pow)) /
+                                      len(self._temp_data_pow))
+                self._last_pow_timestamp = time
 
-                # Get the data from the device
-                # NOTE: the value returned is the last one. You can check timestamp property to validate value.
-                value = float(sum(self._temp_data_pow)) / len(
-                    self._temp_data_pow)  # Get the average over the last values
+                # self.host.logDebug("POW: %.3f - %f - %d" % (
+                # self._last_pow_avg, self._last_pow_timestamp, len(self._temp_data_pow)))
+
                 self._temp_data_pow = []  # Reset the values
 
-                # Update consumption
-                self.consumption['ELECTRICITY'] = complex(value, 0.0)
+            # Check if the data point it is too old, then zeroed
+            if time > (self._last_pow_timestamp + self._TIMEOUT_NODATA):
+                self._last_pow_avg = 0  # Clear the value
 
-                # If all succeeded:
-                self.lastUpdate = self.host.time()
+            # Update consumption
+            self.consumption['ELECTRICITY'] = complex(self._last_pow_avg, 0.0)
 
-            else:
-                self.consumption['ELECTRICITY'] = complex(0.0, 0.0)
+            # If all succeeded:
+            self.lastUpdate = self.host.time()
 
         self.lockState.release()
 

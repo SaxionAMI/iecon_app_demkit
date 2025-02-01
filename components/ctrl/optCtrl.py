@@ -148,12 +148,12 @@ class OptCtrl(Entity):
             for c in signal.commodities:
                 for i in range(0, signal.planHorizon):
 
-                    self.logValue("forecast.POW",  # "W-power.plan.real.c."+c
+                    self.logValue("plan.POW",  # "W-power.plan.real.c."+c
                                   self.plan[c][int(signal.time + i * signal.timeBase)].real,
                                   int(signal.time + i * signal.timeBase),
                                   tags={"CTYPE": str(c).lower()})
                     if self.host.extendedLogging:
-                        self.logValue("forecast.POW_REAC",  # "W-power.plan.imag.c."+c
+                        self.logValue("plan.POW_REAC",  # "W-power.plan.imag.c."+c
                                       self.plan[c][int(signal.time + i * signal.timeBase)].imag,
                                       int(signal.time + i * signal.timeBase),
                                       tags={"CTYPE": str(c).lower()}
@@ -211,12 +211,12 @@ class OptCtrl(Entity):
 
                 if self.forwardLogging and self.host.logControllers:
 
-                    self.logValue("forecast.POW",  # "W-power.plan.real.c."+c
+                    self.logValue("plan.POW",  # "W-power.plan.real.c."+c
                                   self.plan[c][int(time + i * self.timeBase)].real,
                                   int(time + i * timeBase),
                                   tags={"CTYPE": str(c).lower()})
                     if self.host.extendedLogging:
-                        self.logValue("forecast.POW_REAC",  # "W-power.plan.imag.c."+c
+                        self.logValue("plan.POW_REAC",  # "W-power.plan.imag.c."+c
                                       self.plan[c][int(time + i * self.timeBase)].imag,
                                       int(time + i * timeBase),
                                       tags={"CTYPE": str(c).lower()}

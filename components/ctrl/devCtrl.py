@@ -86,11 +86,11 @@ class DevCtrl(OptCtrl):
         try:
             for c in self.commodities:
 
-                self.logValue("forecast.POW",  # "W-power.plan.real.c."+c
+                self.logValue("plan.POW",  # "W-power.plan.real.c."+c
                               self.plan[c][t].real,
                               tags={"CTYPE": str(c).lower()})
                 if self.host.extendedLogging:
-                    self.logValue("forecast.POW_REAC",  # "W-power.plan.imag.c."+c
+                    self.logValue("plan.POW_REAC",  # "W-power.plan.imag.c."+c
                                   self.plan[c][t].imag,
                                   tags={"CTYPE": str(c).lower()}
                                   )
@@ -135,6 +135,23 @@ class DevCtrl(OptCtrl):
             r = self.doPlanning(signal, False)
             self.lockPlanning.acquire()
 
+            # FORECASTING - Let's take the r result which it is the Forecasting information and publish it
+            self.host.logDebug("FORECAST EVENT ---- " + self.name)
+            # self.host.logDebug(str(r))
+            self.logValue("forecast.event", 1)
+            for c in signal.commodities:
+                for i in range(0, len(r['profile'][c])):
+                    self.logValue("forecast.POW",
+                                  r['profile'][c][i].real,
+                                  int(signal.time - (signal.time % self.timeBase) + i * self.timeBase),
+                                  tags={"CTYPE": str(c).lower()})
+                    if self.host.extendedLogging:
+                        self.logValue("forecast.POW_REAC",
+                                      r['profile'][c][i].imag,
+                                      int(signal.time - (signal.time % self.timeBase) + i * self.timeBase),
+                                      tags={"CTYPE": str(c).lower()}
+                                      )
+
             for c in self.commodities:
                 self.realized[c] = {}
                 for i in range(0, len(r['profile'][c])):
@@ -148,18 +165,14 @@ class DevCtrl(OptCtrl):
         # perform forward logging if desired to expose the planning to a user :)
         if self.forwardLogging and self.host.logControllers:
 
-            self.host.logDebug("FORECAST EVENT ---- " + self.name)
-
-            self.logValue("forecast.event", 1)
-
             for c in signal.commodities:
                 for i in range(0, signal.planHorizon):
-                    self.logValue("forecast.POW",  # "W-power.plan.real.c."+c
+                    self.logValue("plan.POW",  # "W-power.plan.real.c."+c
                                   self.plan[c][int(signal.time + i * signal.timeBase)].real,
                                   int(signal.time + i * signal.timeBase),
                                   tags={"CTYPE": str(c).lower()})
                     if self.host.extendedLogging:
-                        self.logValue("forecast.POW_REAC",  # "W-power.plan.imag.c."+c
+                        self.logValue("plan.POW_REAC",  # "W-power.plan.imag.c."+c
                                       self.plan[c][int(signal.time + i * signal.timeBase)].imag,
                                       int(signal.time + i * signal.timeBase),
                                       tags={"CTYPE": str(c).lower()}
