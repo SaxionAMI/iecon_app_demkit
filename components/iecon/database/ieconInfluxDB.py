@@ -123,19 +123,25 @@ class IeconInfluxDBReader(Reader):
 
         # params
         if not db:
-            self.db = host.db
-        else:
-            self.db = db
+            db = host.db
 
+        # DB Parameters
+        self.db_address = db.address
+        self.db_port = db.port
+        self.db_auth_username = db.username
+        self.db_auth_password = db.password
+        self.db_auth_token = db.token
+
+        self.db_database = db.database
         self.db_measurement = db_measurement
+
+        # IECON parameters
         self.entity_name = entity_name
         self.entity_commodity = commodity
 
         self.field_name = field_name
-
         self.timeBase = host.timeBase
         self.offset = offset
-
         self.aggregation = aggregation
 
         self.raw = raw
@@ -174,7 +180,7 @@ class IeconInfluxDBReader(Reader):
 
     def getData(self, query, startTime, endTime):
 
-        url = self.db.address + ":" + str(self.db.port) + "/query"
+        url = self.db_address + ":" + str(self.db_port) + "/query"
         req = None
 
         if not url.startswith("http"):
@@ -182,16 +188,16 @@ class IeconInfluxDBReader(Reader):
 
         payload = dict()
 
-        payload['db'] = self.db.database
+        payload['db'] = self.db_database
         payload['q'] = query
-        if not self.db.token:
-            payload['u'] = self.db.username
-            payload['p'] = self.db.password
+        if not self.db_auth_token:
+            payload['u'] = self.db_auth_username
+            payload['p'] = self.db_auth_password
 
         headers = None
-        if self.db.token:
+        if self.db_auth_token:
             headers = {
-                'Authorization': f'Token {self.db.token}',
+                'Authorization': f'Token {self.db_auth_token}',
             }
 
         try:

@@ -72,6 +72,10 @@ SPB_DOMAIN_ID = demCfg.get("IECON_SPB_DOMAIN_ID", "IECON")
 IECON_DEBUG_EN = demCfg.get("IECON_DEBUG_EN", False)
 IECON_DEBUG_EN = True
 
+SPB_EON_HOUSE = "eiot-16eda211b788"   # Specific house for this single simulation.
+# SPB_EON_HOUSE = "eiot-012faeed6b29"
+# SPB_EON_HOUSE = "eiot-3ad2398b76e8"
+
 # Missing configuration?
 if not demCfg["db"]["influx"]["address"]:
     sys.stderr.write("\nERROR -  unknown or missing configuration. Please check config.yml.\n")
@@ -100,7 +104,7 @@ sim.latitude = 52.330271  # OLST COORDINATES, NL
 sim.longitude = 6.111991
 
 # Data logging
-sim.logDevices = False               # Enable log of device data
+sim.logDevices = True               # Enable log of device data
 sim.logControllers = True           # NOTE: Controllers do not log so much, keep this on True (default)!
 sim.logEnvironments = True          # IMPORTANT - Environments are use for PV model training, enabled should be on.
 sim.logFlow = False                 # Enable log of flow data
@@ -115,7 +119,7 @@ sim.clearDB = False
 
 # Enable control:
 # NOTE: AT MOST ONE OF THESE MAY BE TRUE! They can all be False, however
-sim.useCtrl = False      # Use smart control, defaults to Profile steering
+sim.useCtrl = True      # Use smart control, defaults to Profile steering
 sim.useAuction = False  # Use an auction instead, NOTE useMC must be False!
 sim.usePlAuc = False    # Use a planned auction instead (Profile steering planning, auction realization),
 # NOTE useMC must be False!
@@ -201,19 +205,17 @@ sim.logMsg("  EoN: " + ", ".join(iecon_scada.entities_eon.keys()))
 
 # scada.publish_birth()  # (Commented so the scada is not published in spb - ghost app) Send birth message for the SCADA application
 
-# -------- COMMUNITY OF HOUSES Provisioning ----------------
+# -------- SINGLE HOUSE IECON ----------------
 
-sim.logMsg("---- IECON SCADA automatic neighbourhood entity detection ----")
+sim.logMsg("---- IECON SCADA automatic edge / EoN (House) entity detection ----")
 
-for eon_name in iecon_scada.entities_eon.keys():
-
-    # Provision of Demkit component for IECON spB Edge / EoN / HOUSE entities ( Consumption, Generation, Supply )
-    iecon_eon_provision_demkit_components(
-        host=sim,
-        sun=sun,
-        spb_scada=iecon_scada,
-        spb_eon_name=eon_name,
-    )
+# Provision of Demkit component for IECON spB Edge / EoN / HOUSE entities ( Consumption, Generation, Supply )
+iecon_eon_provision_demkit_components(
+    host=sim,
+    sun=sun,
+    spb_scada=iecon_scada,
+    spb_eon_name=SPB_EON_HOUSE,
+)
 
 sim.logMsg("----")
 
