@@ -15,11 +15,21 @@ def build(folder_installation="./", global_env={}):
 
     # CONFIG - Update Configuration file with MQTT information
     config_file_path = os.path.join(folder_installation, "config.yml")
-    print("Loading config from: " + config_file_path )
+    print("---Loading config from: " + config_file_path )
     with open(config_file_path, "r") as fr:
         config = YAML().load(fr)
 
     # print("gloval_env=", global_env)  # Uncomment to see what it is passed
+
+    # Load configuration file ------------------------------------------------
+    print("---Loading info")
+    with open(os.path.join(folder_installation, "ieconinfo.yml"), "r") as fr:
+        info = YAML().load(fr)
+
+    module_name = info['name']
+    module_name_upper = info['name'].upper()
+    module_version = info['version']
+    print(module_name_upper)
 
     # ----------------------------------------------------------------------------
     #   IECON Parameters
@@ -64,10 +74,32 @@ def build(folder_installation="./", global_env={}):
     with open(config_file_path, "w") as fw:
         YAML().dump(config, fw)
 
-    # Generate Environment file-----------------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
+    #   DOCKER COMPOSE - multi installation changes
+    # ----------------------------------------------------------------------------
+    with open(os.path.join(folder_installation, "docker-compose.yml"), "r") as fr:
+        docker = YAML(typ="base").load(fr)
+
+    service_name = list(docker['services'].keys())[0]
+
+    # Update the container name
+    docker['services'][service_name]['container_name'] = module_name
+
+    # Volumes:
+    docker['services'][service_name]['volumes'] = [
+        "${FOLDER_%s}:/app" % module_name_upper,
+    ]
+
+    # Save docker-compose.yml file
+    with open(os.path.join(folder_installation, "docker-compose.yml"), "w") as fw:
+        YAML().dump(docker, fw)
+
+    # ----------------------------------------------------------------------------
+    #   Generate Environment file
+    # ----------------------------------------------------------------------------
     print("Generating .env")
     with open(os.path.join(folder_installation, ".env"), "w") as fw:
-        fw.write('FOLDER_IECON_APP_DEMKIT="%s"\n' % folder_installation)
+        fw.write('FOLDER_%s="%s"\n' % (module_name_upper, folder_installation))
 
 if __name__ == "__main__":
 
