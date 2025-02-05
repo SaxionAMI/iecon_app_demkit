@@ -83,9 +83,6 @@ def build(folder_installation="./", global_env={}):
 
     service_name = list(docker['services'].keys())[0]
 
-    # Update the container name
-    docker['services'][service_name]['container_name'] = module_base_name
-
     # Build folder
     docker['services'][service_name]['build'] = "$FOLDER_%s" % module_name_upper
 
