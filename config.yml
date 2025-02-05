@@ -29,6 +29,7 @@ IECON_DEBUG_EN: False
 # Set workspace and model to run simulation
 model:
   name: iecon_single_house
+#  name: iecon_community_houses
 workspace:
   path: workspace/iecon/
 

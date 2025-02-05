@@ -29,6 +29,7 @@ def build(folder_installation="./", global_env={}):
     module_name = info['name']
     module_name_upper = info['name'].upper()
     module_version = info['version']
+    module_base_name = info['base_module']
     print(module_name_upper)
 
     # ----------------------------------------------------------------------------
@@ -83,7 +84,7 @@ def build(folder_installation="./", global_env={}):
     service_name = list(docker['services'].keys())[0]
 
     # Update the container name
-    docker['services'][service_name]['container_name'] = module_name
+    docker['services'][service_name]['container_name'] = module_base_name
 
     # Volumes:
     docker['services'][service_name]['volumes'] = [
