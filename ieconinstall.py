@@ -91,7 +91,7 @@ def build(folder_installation="./", global_env={}):
 
     # Volumes:
     docker['services'][service_name]['volumes'] = [
-        "${FOLDER_%s}:/app" % module_name_upper,
+        "$FOLDER_%s:/app" % module_name_upper,
     ]
 
     # Save docker-compose.yml file
