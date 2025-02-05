@@ -234,7 +234,7 @@ class LoadCtrl(DevCtrl):
     #### EVENT BASED PREDICTION UPDATE
     def updatePrediction(self):
 
-        self.host.logDebug("[loadCtrl] updatePrediction - + " + self.name)
+        self.host.logDebug("[loadCtrl] updatePrediction - " + self.name)
 
         self.updatingPrediction = True
         if self.useEventControl and not self.perfectPredictions:
@@ -305,7 +305,9 @@ class LoadCtrl(DevCtrl):
             return
 
         else:
-            self.host.logDebug("[loadCtrl.initializePredictors] Initializing Window predictor - " + self.name)
+
+            # self.host.logDebug("[loadCtrl.initializePredictors] Initializing Window predictor - " + self.name)
+
             self.predictor = WindowPredictor(self.timeBase)
             time = self.host.time(self.timeBase) - (4 * 7 * 24 * 3600)
             data = list(self.zCall(self.dev, 'readValues', time, time + (4 * 7 * 24 * 3600), None, self.timeBase))

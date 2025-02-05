@@ -2,7 +2,7 @@
 name: "iecon_app_demkit"
 
 # Application version
-version: "01.240928.01"
+version: "01.250205.01"
 
 # Application description
 description: "IECON Application DEMKIT - EMS integration for IECON"

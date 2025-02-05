@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from ctrl.live.livePvCtrl import LivePvCtrl
+import time
 
 class IeconLivePvCtrl(LivePvCtrl):
 
@@ -34,3 +34,71 @@ class IeconLivePvCtrl(LivePvCtrl):
 			self.log_db_tags_extra["CTYPE"] = dev.log_db_tags_extra.get("CTYPE")
 		if "CTYPEC" in dev.log_db_tags_extra.keys():
 			self.log_db_tags_extra["CTYPEC"] = dev.log_db_tags_extra.get("CTYPEC")
+
+	# Override base method to enable the backup of planning ( predictions ) into the DB
+	def endSynchronizedPlanning(self, signal):
+		"""
+			Overwrite base method to allow to store the final planning on the device.
+		Args:
+			signal:
+		Returns:
+
+		"""
+
+		# Call parent method
+		result = LivePvCtrl.endSynchronizedPlanning(self, signal)
+
+		# IECON DB data point definitions
+		db_measurement = self.dev.eon_name		# Save it as part of the Edge/EoN/Home list of devices
+		db_tags = {
+			"ENAME": "forec-" + self.dev.eond_name, 	# Virtual Device (EoND) to store this data.
+			"ETYPE": "forecast-ele",			# Forecast service
+			"ESTYPE": self.dev.eond_name,    	# Name of the device for the forecast data
+		}
+
+		# Inherit other IECON tags from device
+		if "CTYPE" in self.dev.log_db_tags_extra.keys():
+			db_tags["CTYPE"] = self.dev.log_db_tags_extra["CTYPE"]
+		if "CTYPEC" in self.dev.log_db_tags_extra.keys():
+			db_tags["CTYPEC"] = self.dev.log_db_tags_extra["CTYPEC"]
+
+		self.logDebug("IeconLivePvCtrl - Saving planning / forecasting - % s - %s" % (self.name, str(db_tags)))
+
+		# Save the data into the DB - We use this direct method to inject data directly using the IECON format.
+		self.host.db.appendValue(
+			measurement=db_measurement,
+			values={"forecast.event": 1},
+			time=time.time(),
+			tags=db_tags
+		)
+
+		# Save the planning for the device in the database.
+		for c in signal.commodities:
+
+			for i in range(0, signal.planHorizon):
+
+			# 	self.dev.logValue("forecast.POW", self.plan[c][].real, int(signal.time + i * signal.timeBase))
+			# 	if self.host.extendedLogging:
+			# 		self.dev.logValue("forecast.POW_REAC", self.plan[c][int(signal.time + i * signal.timeBase)].imag, int(signal.time + i * signal.timeBase))
+
+				ts = int(signal.time + i * signal.timeBase)	 # Current timestamp
+
+				# Save the data into the DB - We use this direct method to inject data directly using the IECON format.
+				self.host.db.appendValue(
+					measurement=db_measurement,
+					time=ts,
+					values={"forecast.POW": self.plan[c][ts].real},
+					tags=db_tags
+				)
+
+				if self.host.extendedLogging:
+					self.host.db.appendValue(
+						measurement=db_measurement,
+						time=ts,
+						values={"forecast.POW_REAC": self.plan[c][ts].imag},
+						tags=db_tags
+					)
+
+		# Return the parent method results
+		return result
+

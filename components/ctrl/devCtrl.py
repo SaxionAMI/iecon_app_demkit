@@ -136,7 +136,8 @@ class DevCtrl(OptCtrl):
             self.lockPlanning.acquire()
 
             # FORECASTING - Let's take the r result which it is the Forecasting information and publish it
-            self.host.logDebug("FORECAST EVENT ---- " + self.name)
+            #  self.host.logDebug("FORECAST EVENT ---- " + self.name)
+
             # self.host.logDebug(str(r))
             self.logValue("forecast.event", 1)
             for c in signal.commodities:

@@ -119,7 +119,7 @@ sim.clearDB = False
 
 # Enable control:
 # NOTE: AT MOST ONE OF THESE MAY BE TRUE! They can all be False, however
-sim.useCtrl = True      # Use smart control, defaults to Profile steering
+sim.useCtrl = False      # Use smart control, defaults to Profile steering
 sim.useAuction = False  # Use an auction instead, NOTE useMC must be False!
 sim.usePlAuc = False    # Use a planned auction instead (Profile steering planning, auction realization),
 # NOTE useMC must be False!
